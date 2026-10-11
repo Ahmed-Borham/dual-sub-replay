@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.media.AudioAttributes
 import android.media.MediaPlayer
+import android.media.audiofx.LoudnessEnhancer
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -28,6 +29,8 @@ internal fun installedPronunciationEngines(context: Context): List<String?> {
 internal class AndroidPronunciationEngine(
     context: Context,
     engineName: String?,
+    /** The learner's pronunciation volume; speech spoken directly cannot go above the phone's volume. */
+    private val volume: Float = DEFAULT_PRONUNCIATION_VOLUME,
 ) : PronunciationEngine {
     private val handler = Handler(Looper.getMainLooper())
     private val initialized = CompletableDeferred<Boolean>()
@@ -113,7 +116,7 @@ internal class AndroidPronunciationEngine(
         playback = result
         val id = "word-${++nextUtterance}"
         utteranceId = id
-        val parameters = Bundle().apply { putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 1f) }
+        val parameters = Bundle().apply { putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, playerVolume(volume)) }
         return try {
             if (start(parameters, id) == TextToSpeech.ERROR) false else result.await()
         } finally {
@@ -137,16 +140,28 @@ internal class AndroidPronunciationEngine(
     }
 }
 
-/** Plays recorded speech from [file] and returns whether it played to the end. Cancelling stops it. */
-internal suspend fun playSpeechFile(file: File): Boolean =
+/**
+ * Plays recorded speech from [file] at [volume] (1 is the phone's media volume, above 1 louder)
+ * and returns whether it played to the end. Cancelling stops it.
+ */
+internal suspend fun playSpeechFile(
+    file: File,
+    volume: Float = DEFAULT_PRONUNCIATION_VOLUME,
+): Boolean =
     suspendCancellableCoroutine { continuation ->
         val player = MediaPlayer()
+        var booster: LoudnessEnhancer? = null
+
+        fun release() {
+            runCatching { booster?.release() }
+            player.release()
+        }
 
         fun finish(played: Boolean) {
-            player.release()
+            release()
             if (continuation.isActive) continuation.resume(played)
         }
-        continuation.invokeOnCancellation { player.release() }
+        continuation.invokeOnCancellation { release() }
         try {
             player.setAudioAttributes(
                 AudioAttributes
@@ -162,6 +177,18 @@ internal suspend fun playSpeechFile(file: File): Boolean =
             }
             player.setDataSource(file.path)
             player.prepare()
+            player.setVolume(playerVolume(volume), playerVolume(volume))
+            val extra = extraGainMillibels(volume)
+            // Some phones offer no loudness effect; the speech then plays at the phone's volume.
+            if (extra > 0) {
+                booster =
+                    runCatching {
+                        LoudnessEnhancer(player.audioSessionId).apply {
+                            setTargetGain(extra)
+                            enabled = true
+                        }
+                    }.getOrNull()
+            }
             player.start()
         } catch (_: Exception) {
             finish(false)
