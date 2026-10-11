@@ -171,8 +171,9 @@ internal fun japaneseDictionaryNote(status: JapaneseDictionaryStatus): Int? =
 /** Actions the app root supplies to every selectable subtitle line. */
 internal class PhraseActions(
     val pause: () -> Unit = {},
+    /** Speaks the selection; [text] is what the speech engine reads, kana in place of kanji where known. */
     val pronounce: (text: String, translated: Boolean) -> Unit = { _, _ -> },
-    /** Runs whenever the selected text changes, before any button is pressed. */
+    /** Runs whenever the selected text changes, before any button is pressed, with the text to speak. */
     val select: (text: String, translated: Boolean, singleWord: Boolean) -> Unit = { _, _, _ -> },
     val stopSpeech: () -> Unit = {},
     val speechMessage: () -> String? = { null },
@@ -302,9 +303,10 @@ internal fun SelectableSubtitleText(
     val start = words?.let { tokens[it.first].startIndex }
     val end = words?.let { tokens[it.last].endIndex }
     val selectedText = if (start != null && end != null) text.substring(start, end) else null
+    val spoken = if (selectedText != null && start != null && words != null) spokenText(selectedText, start, tokens.slice(words)) else null
     val singleWord = words != null && words.first == words.last
-    LaunchedEffect(selectedText, singleWord) {
-        selectedText?.let { controller.actions.select(it, translated, singleWord) }
+    LaunchedEffect(spoken, singleWord) {
+        spoken?.let { controller.actions.select(it, translated, singleWord) }
     }
     val shown =
         if (start != null && end != null) {
@@ -350,7 +352,7 @@ internal fun SelectableSubtitleText(
                     controller.clear(owner)
                     onWordClick(tap)
                 },
-                onPronounce = { controller.actions.pronounce(text.substring(start, end), translated) },
+                onPronounce = { spoken?.let { controller.actions.pronounce(it, translated) } },
                 onClose = { controller.clear(owner) },
             )
         }

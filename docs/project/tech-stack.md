@@ -86,7 +86,8 @@ Paths below are relative to
   `PracticeTransfer.kt` handles JSON/Anki TSV transfer. `data/ImmersionRepository.kt` keeps
   watched time per local day and language in a separate SQLite database; `ImmersionStats.kt`
   holds the testable tracking, batching and aggregation used by `ui/ProgressScreen.kt`. App preferences use Android
-  SharedPreferences. `ui/WordPronouncer.kt` manages Android speech-engine fallback.
+  SharedPreferences. `ui/WordPronouncer.kt` manages Android speech-engine fallback; Japanese words
+  are spoken from their kana reading (`spokenText` in `ui/Pronunciation.kt`), not the kanji.
   `ui/PhraseSelection.kt` owns word/phrase selection in subtitle lines and its Copy /
   Translate / Pronounce bar; `ui/WordLearningSheet.kt` is the card Translate opens.
   `ui/PronunciationCache.kt` keeps the recorded speech of the last pronounced word only.

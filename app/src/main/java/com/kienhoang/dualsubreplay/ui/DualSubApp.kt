@@ -220,13 +220,16 @@ private fun SelectedWordDialog(
             autoPronounce = state.autoPronounce,
             onTranslateWord = { viewModel.translateSelection(selection) },
             onSave = { meaning, online -> viewModel.saveWord(selection, meaning, online); Unit },
-            onSpeak = { webController.pause(); pronouncer.speak(selection.token.text, selection.wordLanguage) },
+            onSpeak = {
+                webController.pause()
+                pronouncer.speak(spokenText(selection.token.text, selection.token.startIndex, selection.parts), selection.wordLanguage)
+            },
             speechMessage = pronouncer.message,
             onSpeechSettings = if (pronouncer.showSpeechSettings) pronouncer::openSpeechSettings else null,
             onDismiss = { viewModel.selectLearningWord(null) },
             onSpeakPart = { part ->
                 webController.pause()
-                pronouncer.speak(part.text, selection.wordLanguage)
+                pronouncer.speak(spokenWord(part.text, part.reading), selection.wordLanguage)
             },
         )
     }
