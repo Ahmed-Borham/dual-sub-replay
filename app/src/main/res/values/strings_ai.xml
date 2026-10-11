@@ -139,6 +139,10 @@
     <string name="ai_attachment_question">Please explain this.</string>
     <string name="ai_error_unsupported_attachment">This model can\'t read pictures or PDFs. Choose another model under the chat box and tap Try again, or ask without them.</string>
     <string name="ai_setup_step_create_opencode">On your workspace page, open API Keys, tap Create API Key, then copy the key.</string>
+    <string name="ai_provider_claude" translatable="false">Claude</string>
+    <string name="ai_provider_claude_note">Paid, from Anthropic</string>
+    <string name="ai_setup_step_get_claude">Tap “Get a key” and sign in. Anthropic charges for use, so add credit first.</string>
+    <string name="ai_setup_step_create_claude">Tap “Create Key”, give it a name, then copy the key.</string>
     <string name="ai_action_on">On</string>
     <string name="ai_action_off">Off</string>
     <string name="ai_action_setting">%1$s: %2$s</string>

@@ -134,6 +134,9 @@
     <string name="ai_attachment_question">请解释一下这个。</string>
     <string name="ai_error_unsupported_attachment">此模型无法读取图片或 PDF。请在聊天框下方选择其他模型并点按“重试”，或不带附件提问。</string>
     <string name="ai_setup_step_create_opencode">在工作区页面打开 API Keys，点按 Create API Key，然后复制密钥。</string>
+    <string name="ai_provider_claude_note">付费，由 Anthropic 提供</string>
+    <string name="ai_setup_step_get_claude">点按“获取密钥”并登录。Anthropic 按用量收费，请先充值。</string>
+    <string name="ai_setup_step_create_claude">点按“Create Key”（创建密钥），起个名字，然后复制密钥。</string>
     <string name="ai_action_on">开</string>
     <string name="ai_action_off">关</string>
     <string name="ai_action_setting">%1$s：%2$s</string>

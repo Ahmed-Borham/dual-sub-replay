@@ -63,6 +63,9 @@ Paths below are relative to
   `AiChatClient.kt` speaks the OpenAI-compatible `/chat/completions` format over OkHttp (HTTPS
   only, no redirects, IPv4 first, 1 MiB response cap) for Gemini, OpenRouter, OpenAI, OpenCode Zen
   and Go, or a custom address (`AiProvider.kt`), and lists the service's models from `/models`.
+  Claude uses Anthropic's own Messages API (`AiAnthropicMessages.kt`, `x-api-key` header) through
+  the same client; an answer that asks for actions goes back unchanged, thinking included, with
+  their results.
   `AiAttachmentReader.kt` turns chosen pictures (scaled JPEG), PDFs and text files into message
   parts that live only in memory. `AiKeyStore.kt` keeps one key per service, AES-GCM encrypted with an Android
   Keystore key, in the `ai_assistant_keys` preferences; `AiChatHistory.kt` keeps chats in

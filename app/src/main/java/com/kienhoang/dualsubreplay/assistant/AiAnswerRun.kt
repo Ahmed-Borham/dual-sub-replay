@@ -41,7 +41,7 @@ internal class AiAnswerRun(
             val reply = request(messages, firstRound = round == 1) ?: break
             reply.text.takeIf { it.isNotBlank() }?.let(texts::add)
             if (reply.toolCalls.isEmpty() || tools.isEmpty() || round == MAX_AI_REQUESTS_PER_ANSWER) break
-            messages += AiWireMessage(AiRole.ASSISTANT, reply.text, toolCalls = reply.toolCalls)
+            messages += AiWireMessage(AiRole.ASSISTANT, reply.text, toolCalls = reply.toolCalls, rawContent = reply.rawContent)
             reply.toolCalls.forEach { call -> messages += AiWireMessage(AiRole.TOOL, handle(call), toolCallId = call.id) }
         }
         // Only actions the app does not offer, or that were all refused, and no words: nothing to show.

@@ -143,7 +143,8 @@ private val SETUP_PROBLEMS =
 
 /**
  * A busy model (HTTP 503 "high demand") or a short rate limit is asked again after these waits.
- * Gemini's free `gemini-flash-latest` answers 503 to about half of all requests at busy times.
+ * Gemini's free `gemini-flash-latest` answers 503 to about half of all requests at busy times, and
+ * Anthropic answers 529 "overloaded".
  */
 internal val AI_BUSY_RETRY_DELAYS_MS = listOf(1_000L, 3_000L)
 
@@ -214,7 +215,7 @@ internal class AiAssistantController(
     private val io: CoroutineDispatcher = Dispatchers.IO,
     private val clock: () -> Long = System::currentTimeMillis,
     private val newId: () -> String = { UUID.randomUUID().toString() },
-    private val modelLister: AiModelLister = AiModelLister { _, _ -> emptyList() },
+    private val modelLister: AiModelLister = AiModelLister { _, _, _ -> emptyList() },
     /** Waits before asking a busy service again; each entry is one more try. */
     private val busyRetryDelaysMs: List<Long> = AI_BUSY_RETRY_DELAYS_MS,
     private val memoryStorage: AiMemoryStorage = InMemoryAiMemoryStorage(),
@@ -246,10 +247,12 @@ internal class AiAssistantController(
         scope.launch {
             val loaded =
                 withContext(io) {
-                    val settings = settingsStorage.load()
                     val hints = AiProvider.entries.mapNotNull { provider -> keyStore.hint(provider)?.let { provider to it } }.toMap()
                     val checked =
                         AiProvider.entries.mapNotNull { provider -> keyStore.checkedSetup(provider)?.let { provider to it } }.toMap()
+                    val saved = settingsStorage.load()
+                    val settings = aiModelsKeptFromChecks(saved, checked)
+                    if (settings != saved) settingsStorage.save(settings)
                     val stored = historyStorage.load()
                     val kept = keptAiChats(stored, settings.historyRetention, clock())
                     if (kept != stored) historyStorage.save(kept)
@@ -403,7 +406,8 @@ internal class AiAssistantController(
                 val result =
                     try {
                         val key = unlockKey(provider)
-                        val models = withContext(io) { aiCall { modelLister.listModels(settings.baseUrlFor(provider), key) } }
+                        val models =
+                            withContext(io) { aiCall { modelLister.listModels(settings.baseUrlFor(provider), key, provider.format) } }
                         AiModelList.Loaded(provider, models.filter { aiModelCanChat(provider, it.id) })
                     } catch (error: AiChatException) {
                         AiModelList.Failed(AiFailure(error.kind, error.detail))
@@ -701,7 +705,7 @@ internal class AiAssistantController(
         val baseUrl = settings.baseUrlFor(provider)
         if (chatCompletionsUrl(baseUrl) == null) throw AiChatException(AiErrorKind.BAD_ADDRESS)
         val key = unlockKey(provider)
-        val request = AiChatRequest(baseUrl, settings.modelFor(provider), key, messages, timeoutMs, reasoningEffort, tools)
+        val request = AiChatRequest(baseUrl, settings.modelFor(provider), key, messages, timeoutMs, reasoningEffort, tools, provider.format)
         val busyWaits = busyRetryDelaysMs.iterator()
         var wrongModelAnswers = 0
         while (true) {

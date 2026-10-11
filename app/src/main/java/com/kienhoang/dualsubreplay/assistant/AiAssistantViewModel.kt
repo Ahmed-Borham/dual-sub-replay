@@ -24,7 +24,7 @@ class AiAssistantViewModel(
             .use { it.readText() }
     }
 
-    private val transport = OpenAiCompatibleTransport()
+    private val transport = AiHttpTransport()
 
     internal val controller =
         AiAssistantController(

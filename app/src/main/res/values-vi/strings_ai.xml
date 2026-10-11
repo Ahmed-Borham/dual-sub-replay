@@ -134,6 +134,9 @@
     <string name="ai_attachment_question">Hãy giải thích nội dung này.</string>
     <string name="ai_error_unsupported_attachment">Mô hình này không đọc được ảnh hoặc PDF. Hãy chọn mô hình khác bên dưới ô chat rồi bấm Thử lại, hoặc hỏi mà không kèm chúng.</string>
     <string name="ai_setup_step_create_opencode">Trên trang workspace, mở API Keys, bấm Create API Key rồi sao chép khóa.</string>
+    <string name="ai_provider_claude_note">Trả phí, của Anthropic</string>
+    <string name="ai_setup_step_get_claude">Nhấn “Lấy khóa” và đăng nhập. Anthropic tính phí khi dùng, nên hãy nạp tiền trước.</string>
+    <string name="ai_setup_step_create_claude">Nhấn “Create Key” (Tạo khóa), đặt tên, rồi sao chép khóa.</string>
     <string name="ai_action_on">Bật</string>
     <string name="ai_action_off">Tắt</string>
     <string name="ai_action_setting">%1$s: %2$s</string>

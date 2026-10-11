@@ -94,6 +94,8 @@ internal data class AiWireMessage(
     val toolCalls: List<AiToolCall> = emptyList(),
     /** For a [AiRole.TOOL] message, the call it answers. */
     val toolCallId: String? = null,
+    /** Claude's answer exactly as it came ([AiReply.rawContent]); sent instead of the fields above. */
+    val rawContent: String? = null,
 )
 
 internal data class AiChatRequest(
@@ -106,6 +108,7 @@ internal data class AiChatRequest(
     val reasoningEffort: String? = null,
     /** The actions the model may ask for; empty sends none. */
     val tools: List<AiTool> = emptyList(),
+    val format: AiWireFormat = AiWireFormat.OPENAI_CHAT,
 )
 
 /** Sends one chat request and returns the reply, or throws [AiChatException]. */
@@ -125,6 +128,7 @@ internal fun interface AiModelLister {
     suspend fun listModels(
         baseUrl: String,
         apiKey: String,
+        format: AiWireFormat,
     ): List<AiModelInfo>
 }
 
@@ -178,7 +182,7 @@ private fun wireContent(message: AiWireMessage): Any {
     }
 }
 
-/** Every model in an OpenAI-style `{"data": [{"id": …}, …]}` list, sorted by name. */
+/** Every model in an OpenAI-style `{"data": [{"id": …}, …]}` list (Anthropic's has the same shape), sorted by name. */
 internal fun parseAiModelList(body: String): List<AiModelInfo> {
     val data =
         try {
@@ -343,7 +347,8 @@ private fun unsupportedExtra(
             AiErrorKind.UNSUPPORTED_TOOLS
         sentAttachments && code in 400..499 && code !in setOf(401, 403, 429) && ATTACHMENT_ERROR_WORDS.any { it in lower } ->
             AiErrorKind.UNSUPPORTED_ATTACHMENT
-        sentThinking && (code == 400 || code == 422) && ("reasoning" in lower || "thinking" in lower) -> AiErrorKind.UNSUPPORTED_THINKING
+        sentThinking && (code == 400 || code == 422) && ("reasoning" in lower || "thinking" in lower || "effort" in lower) ->
+            AiErrorKind.UNSUPPORTED_THINKING
         else -> null
     }
 
@@ -366,6 +371,8 @@ internal fun aiErrorKindForStatus(
         code == 429 && ("quota" in lower || "credit" in lower || "billing" in lower) -> AiErrorKind.NO_CREDIT
         code == 429 -> AiErrorKind.RATE_LIMITED
         code == 400 && "api key" in lower -> AiErrorKind.INVALID_KEY
+        // Anthropic answers 400 "Your credit balance is too low" for an account without credit.
+        code == 400 && ("credit balance" in lower || "billing" in lower) -> AiErrorKind.NO_CREDIT
         code == 400 && "model" in lower -> AiErrorKind.UNKNOWN_MODEL
         code in 400..499 -> AiErrorKind.BAD_REQUEST
         else -> AiErrorKind.SERVER
@@ -394,8 +401,8 @@ internal class PreferIpv4Dns(
     override fun lookup(hostname: String): List<InetAddress> = preferIpv4Addresses(system.lookup(hostname))
 }
 
-/** The OpenAI-compatible `chat/completions` client shared by every service. */
-internal class OpenAiCompatibleTransport(
+/** The client shared by every service: OpenAI-compatible `chat/completions`, or Anthropic's `messages`. */
+internal class AiHttpTransport(
     private val client: OkHttpClient =
         OkHttpClient
             .Builder()
@@ -410,25 +417,42 @@ internal class OpenAiCompatibleTransport(
 ) : AiChatTransport,
     AiModelLister {
     override suspend fun complete(request: AiChatRequest): AiReply {
-        val url = chatCompletionsUrl(request.baseUrl) ?: throw AiChatException(AiErrorKind.BAD_ADDRESS)
-        val body =
-            chatRequestBody(request.model, request.messages, request.reasoningEffort, request.tools).toRequestBody(JSON_MEDIA_TYPE)
-        val httpRequest = authorized(request.apiKey) { url(url).post(body) }
+        val anthropic = request.format == AiWireFormat.ANTHROPIC_MESSAGES
+        val url =
+            (if (anthropic) anthropicMessagesUrl(request.baseUrl) else chatCompletionsUrl(request.baseUrl))
+                ?: throw AiChatException(AiErrorKind.BAD_ADDRESS)
+        val json =
+            if (anthropic) {
+                anthropicRequestBody(request.model, request.messages, request.reasoningEffort, request.tools)
+            } else {
+                chatRequestBody(request.model, request.messages, request.reasoningEffort, request.tools)
+            }
+        val httpRequest = authorized(request.apiKey, request.format) { url(url).post(json.toRequestBody(JSON_MEDIA_TYPE)) }
         val (code, reply) = execute(httpRequest, request.timeoutMs, MAX_AI_RESPONSE_BYTES)
         val status = aiReplyStatus(code, reply)
         if (status !in 200..299) {
             val sentAttachments = request.messages.any { it.attachments.isNotEmpty() }
             throw statusFailure(status, reply, request.apiKey, request.reasoningEffort != null, sentAttachments, request.tools.isNotEmpty())
         }
-        return parseAiReply(reply)
+        return if (anthropic) parseAnthropicReply(reply) else parseAiReply(reply)
     }
 
     override suspend fun listModels(
         baseUrl: String,
         apiKey: String,
+        format: AiWireFormat,
     ): List<AiModelInfo> {
-        val url = modelsUrl(baseUrl) ?: throw AiChatException(AiErrorKind.BAD_ADDRESS)
-        val (code, reply) = execute(authorized(apiKey) { url(url).get() }, AI_TEST_TIMEOUT_MS, MAX_AI_MODEL_LIST_BYTES)
+        val listUrl = modelsUrl(baseUrl) ?: throw AiChatException(AiErrorKind.BAD_ADDRESS)
+        // Anthropic sends 20 models a page unless asked for more.
+        val url =
+            if (format ==
+                AiWireFormat.ANTHROPIC_MESSAGES
+            ) {
+                listUrl.newBuilder().addQueryParameter("limit", "1000").build()
+            } else {
+                listUrl
+            }
+        val (code, reply) = execute(authorized(apiKey, format) { url(url).get() }, AI_TEST_TIMEOUT_MS, MAX_AI_MODEL_LIST_BYTES)
         val status = aiReplyStatus(code, reply)
         if (status !in 200..299) throw statusFailure(status, reply, apiKey, sentThinking = false, sentAttachments = false)
         return parseAiModelList(reply)
@@ -436,13 +460,20 @@ internal class OpenAiCompatibleTransport(
 
     private fun authorized(
         apiKey: String,
+        format: AiWireFormat,
         target: Request.Builder.() -> Request.Builder,
     ): Request =
         try {
             Request
                 .Builder()
-                .header("Authorization", "Bearer $apiKey")
-                .header("Accept", "application/json")
+                .apply {
+                    if (format == AiWireFormat.ANTHROPIC_MESSAGES) {
+                        header("x-api-key", apiKey)
+                        header("anthropic-version", ANTHROPIC_API_VERSION)
+                    } else {
+                        header("Authorization", "Bearer $apiKey")
+                    }
+                }.header("Accept", "application/json")
                 .target()
                 .build()
         } catch (error: IllegalArgumentException) {

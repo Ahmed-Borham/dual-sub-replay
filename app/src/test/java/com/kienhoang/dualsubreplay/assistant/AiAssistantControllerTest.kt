@@ -92,8 +92,8 @@ class AiAssistantControllerTest {
             io = Dispatchers.Unconfined,
             clock = { now },
             newId = { "id${ids++}" },
-            modelLister = { baseUrl, apiKey ->
-                listedModels += "$baseUrl $apiKey"
+            modelLister = { baseUrl, apiKey, format ->
+                listedModels += "$baseUrl $apiKey $format"
                 modelListFailure?.let { throw it }
                 listOf(AiModelInfo("gemini-flash-latest"), AiModelInfo("gemini-pro-latest"), AiModelInfo("text-embedding-004"))
             },
@@ -228,6 +228,31 @@ class AiAssistantControllerTest {
         assertEquals(AiProvider.GEMINI.baseUrl, test.baseUrl)
         assertEquals(AiProvider.GEMINI.defaultModel, test.model)
         assertFalse(secrets.values.values.any { geminiKey in it })
+    }
+
+    @Test
+    fun aClaudeKeyIsCheckedThroughAnthropicsOwnFormat() {
+        val claudeKey = "sk-ant-api03-FAKE-test-key-for-unit-tests"
+        val controller = controller()
+        assertEquals(AiProvider.CLAUDE, controller.saveKey(claudeKey))
+        assertTrue(controller.state.value.ready)
+        val test = transport.requests.single()
+        assertEquals(AiWireFormat.ANTHROPIC_MESSAGES, test.format)
+        assertEquals("https://api.anthropic.com/v1", test.baseUrl)
+        assertEquals("claude-haiku-5-5", test.model)
+        controller.loadModels()
+        assertEquals(listOf("https://api.anthropic.com/v1 $claudeKey ANTHROPIC_MESSAGES"), listedModels)
+    }
+
+    @Test
+    fun aGeminiKeyCheckedWithTheOldDefaultKeepsThatModel() {
+        // Before 2026-10-11 Gemini's default was gemini-flash-latest, and the check names the model.
+        keyStore.save(AiProvider.GEMINI, geminiKey)
+        keyStore.markChecked(AiProvider.GEMINI, AiProvider.GEMINI.baseUrl + "\ngemini-flash-latest")
+        val state = controller().state.value
+        assertEquals("gemini-flash-latest", state.settings.modelFor(AiProvider.GEMINI))
+        assertEquals("gemini-flash-latest", settings.value.models[AiProvider.GEMINI])
+        assertTrue(state.ready)
     }
 
     @Test
@@ -450,7 +475,7 @@ class AiAssistantControllerTest {
             AiModelCheck.Failed("gemini-9", AiFailure(AiErrorKind.UNKNOWN_MODEL, "models/gemini-9 is not found.")),
             state.modelCheck,
         )
-        assertEquals("gemini-flash-latest", state.settings.modelFor(AiProvider.GEMINI))
+        assertEquals("gemini-flash-lite-latest", state.settings.modelFor(AiProvider.GEMINI))
         assertTrue(state.ready)
         transport.failure = null
         controller.chooseModel(" gemini-pro-latest ")
@@ -483,7 +508,7 @@ class AiAssistantControllerTest {
             AiModelList.Loaded(AiProvider.GEMINI, listOf(AiModelInfo("gemini-flash-latest"), AiModelInfo("gemini-pro-latest"))),
             controller.state.value.modelList,
         )
-        assertEquals(listOf("${AiProvider.GEMINI.baseUrl} $geminiKey"), listedModels)
+        assertEquals(listOf("${AiProvider.GEMINI.baseUrl} $geminiKey OPENAI_CHAT"), listedModels)
         modelListFailure = AiChatException(AiErrorKind.NETWORK, "UnknownHostException")
         controller.loadModels()
         assertEquals(AiModelList.Failed(AiFailure(AiErrorKind.NETWORK, "UnknownHostException")), controller.state.value.modelList)

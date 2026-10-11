@@ -134,6 +134,9 @@
     <string name="ai_attachment_question">이것을 설명해 주세요.</string>
     <string name="ai_error_unsupported_attachment">이 모델은 이미지나 PDF를 읽을 수 없습니다. 채팅 입력란 아래에서 다른 모델을 선택하고 다시 시도를 누르거나, 첨부 없이 질문하세요.</string>
     <string name="ai_setup_step_create_opencode">워크스페이스 페이지에서 API Keys를 열고 Create API Key를 누른 다음 키를 복사하세요.</string>
+    <string name="ai_provider_claude_note">유료, Anthropic 제공</string>
+    <string name="ai_setup_step_get_claude">“키 받기”를 누르고 로그인하세요. Anthropic은 유료이므로 먼저 크레딧을 충전하세요.</string>
+    <string name="ai_setup_step_create_claude">“Create Key”(키 만들기)를 누르고 이름을 정한 다음 키를 복사하세요.</string>
     <string name="ai_action_on">켜기</string>
     <string name="ai_action_off">끄기</string>
     <string name="ai_action_setting">%1$s: %2$s</string>
