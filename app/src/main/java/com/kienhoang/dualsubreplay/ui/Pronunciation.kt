@@ -1,5 +1,6 @@
 package com.kienhoang.dualsubreplay.ui
 
+import com.kienhoang.dualsubreplay.data.AnalyzedToken
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
@@ -39,6 +40,42 @@ internal enum class PronunciationResult {
     PLAYBACK_FAILED,
     INVALID_LANGUAGE,
 }
+
+/**
+ * What to hand the speech engine for [text], which starts at index [start] of its subtitle line:
+ * each of [words] that has a kana reading is replaced by it. Speech engines guess the reading of
+ * kanji on their own (今日 as きょう or こんにち), while the reading comes from the whole line.
+ */
+internal fun spokenText(
+    text: String,
+    start: Int,
+    words: List<AnalyzedToken>,
+): String {
+    val spoken = StringBuilder()
+    var cursor = 0
+    for (word in words) {
+        val reading = kanaReading(word.reading) ?: continue
+        val at = word.startIndex - start
+        // Offsets that do not match the text: speak it as written rather than garble it.
+        if (at < cursor || !text.startsWith(word.text, at)) return text
+        spoken.append(text, cursor, at).append(reading)
+        cursor = at + word.text.length
+    }
+    return spoken.append(text, cursor, text.length).toString()
+}
+
+/** A saved [word] is spoken from its [reading] when that reading is kana. */
+internal fun spokenWord(
+    word: String,
+    reading: String?,
+): String = kanaReading(reading) ?: word
+
+/**
+ * [reading] when it is only kana, otherwise null. Saved words can carry other readings, such as
+ * romanization from the assistant, which must not be read aloud as the word.
+ */
+private fun kanaReading(reading: String?): String? =
+    reading?.trim()?.takeIf { text -> text.isNotEmpty() && text.all { it.code in 0x3040..0x30FF || it == ' ' } }
 
 internal fun pronunciationLocale(language: String): Locale? =
     Locale.forLanguageTag(language.trim().replace('_', '-')).takeIf {
