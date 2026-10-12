@@ -99,7 +99,7 @@ If DualSub Replay helps your learning, consider [starring the repository](https:
 - Problems such as Google Translate failing or subtitles not loading show at the top of the panel, with **Ask AI about this**.
 - It uses your own free or paid API key from Google Gemini, OpenRouter, OpenAI, Claude, OpenCode, or another OpenAI-compatible service. Pick a service in the panel, and **Get a key** opens the page that gives you one. The key is checked before the first question.
 - Under the chat box, **+** adds photos and files (pictures, PDFs, subtitle and text files), and you can switch the model and how long it thinks, as in other chat apps.
-- Your key is encrypted on the phone and never backed up. Chats stay on the phone for 7 days by default. Turn the assistant off completely in **More settings → AI assistant**. The F-Droid build has no assistant.
+- Your key is encrypted on the phone and never backed up. Chats stay on the phone for 7 days by default. Turn the assistant off completely in **More settings → AI assistant**.
 
 ### Track your progress
 
@@ -128,11 +128,11 @@ The interface is available in English, Tiếng Việt, Español, Português (Bra
 
 **Can I sign in to YouTube?** Experimentally. The Google sign-in flow stays inside the app and returns to your video afterwards, but Google does not officially support signing in from embedded WebViews and may reject it with a "browser or app may not be secure" message. The app never spoofs its user agent or copies cookies.
 
-**Is it on Google Play or F-Droid?** Not yet. Install the official APK from [GitHub releases](https://github.com/hoangkien1703/dual-sub-replay/releases/latest). A fully open-source build for F-Droid, which translates with Mozilla's Bergamot engine instead of ML Kit, is being prepared; see [F-Droid distribution](docs/fdroid/README.md).
+**Is it on Google Play?** Not yet. Install the official APK from [GitHub releases](https://github.com/hoangkien1703/dual-sub-replay/releases/latest).
 
 ## Privacy
 
-No account or API key is required, and the app has no analytics or advertising SDKs. The optional AI assistant sends nothing until you add your own key and ask it something; questions then go to the AI service you chose. YouTube receives the same page, player and caption requests as a normal visit. By default the GitHub build sends subtitle text to Google Translate (online) for better translations. Turn off Settings → Translation → Google Translate (online) to translate on the device instead: ML Kit downloads only the language models you use, then translates on the device. The F-Droid build always translates on the device. Settings, saved words, and progress stay in local app storage. See [PRIVACY.md](PRIVACY.md) for details.
+No account or API key is required, and the app has no analytics or advertising SDKs. The optional AI assistant sends nothing until you add your own key and ask it something; questions then go to the AI service you chose. YouTube receives the same page, player and caption requests as a normal visit. By default the app sends subtitle text to Google Translate (online) for better translations. Turn off Settings → Translation → Google Translate (online) to translate on the device instead: ML Kit downloads only the language models you use, then translates on the device. Settings, saved words, and progress stay in local app storage. See [PRIVACY.md](PRIVACY.md) for details.
 
 ## Limitations
 
@@ -152,13 +152,13 @@ bash ./gradlew pixel2Api36DebugAndroidTest
 
 On Windows, use `.\gradlew.bat` instead. The managed-device suite runs on a Pixel 2 profile with offline WebView fixtures, so it never calls the live YouTube site; on headless hosts also pass `-Pandroid.testoptions.manageddevices.emulator.gpu=swiftshader_indirect`.
 
-The debug APK is written to `app/build/outputs/apk/debug/app-debug.apk`. Add `-Pdistribution=fdroid` to build the F-Droid variant; it needs the git submodules, NDK r28c and CMake 3.22.1 ([F-Droid distribution](docs/fdroid/README.md)). Release builds need the four `ANDROID_RELEASE_*` signing variables and `-PrequireReleaseSigning=true`; never commit signing material.
+The debug APK is written to `app/build/outputs/apk/debug/app-debug.apk`. Release builds need the four `ANDROID_RELEASE_*` signing variables and `-PrequireReleaseSigning=true`; never commit signing material.
 
 ### Architecture
 
 - `SingleYouTubePage` owns the app's only WebView and keeps normal YouTube navigation and playback intact. A small JavaScript polling bridge reads the page video's time and seeks that same video for replay.
 - `YouTubeUrlParser` normalizes shared links; `YouTubeCaptionProvider` discovers and downloads timed captions; `SubtitleMerger` turns short cues into replayable sentences.
-- `OnDeviceTranslator` translates with Google ML Kit (Bergamot in the F-Droid build).
+- `OnDeviceTranslator` translates with Google ML Kit when Google Translate (online) is off or fails.
 - `AppViewModel` tracks the active video, caption loading, translation, and the current line; `DualSubApp` places the subtitle panel below the video in portrait or beside it in landscape.
 
 See the [technical context](docs/project/tech-stack.md) for the invariants that tests enforce.

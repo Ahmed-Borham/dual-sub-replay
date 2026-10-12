@@ -9,8 +9,6 @@ internal const val AI_ASSISTANT_GUIDE_ASSET = "ai/assistant-guide.md"
  */
 internal data class AiAppSnapshot(
     val appVersion: String,
-    /** "GitHub" or "F-Droid". */
-    val build: String,
     /** English name of the interface language, which is also the reply language. */
     val replyLanguage: String,
     val sourceLanguage: String,
@@ -29,11 +27,7 @@ internal fun aiSystemPrompt(
         append(guide.trim())
         append("\n\nReply language: ").append(snapshot.replyLanguage)
         append("\n\nThe app right now:")
-        append("\n- Version: ")
-            .append(snapshot.appVersion)
-            .append(" (")
-            .append(snapshot.build)
-            .append(" build)")
+        append("\n- Version: ").append(snapshot.appVersion)
         append("\n- Learning: ").append(snapshot.sourceLanguage).append(" subtitles, translated to ").append(snapshot.targetLanguage)
         append("\n- Translation: ").append(snapshot.translation)
         if (snapshot.settings.isNotEmpty()) {

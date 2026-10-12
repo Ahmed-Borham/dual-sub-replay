@@ -21,14 +21,7 @@ Current releases bundle only:
 - Kotlin / Coroutines: Apache-2.0.
 - Kuromoji 0.9.0 (`com.atilika.kuromoji:kuromoji-ipadic`, code only): Apache-2.0, copyright 2010-2015 Atilika Inc. and contributors. Its license and notice files are kept in the APK under `META-INF/`.
 
-The F-Droid build (`-Pdistribution=fdroid`) leaves out Google ML Kit Translate and contains only free software. Instead it bundles a native translation engine built from the git submodules in `app/src/fdroid/cpp`:
-- Bergamot translator and Marian (mozilla/translations `inference/`): MPL-2.0 and MIT.
-- Bundled with Marian: SentencePiece and ruy (Apache-2.0), cpuinfo, pathie-cpp and simd_utils (BSD-2-Clause), intgemm, yaml-cpp and faiss (MIT), zlib (zlib).
-- ssplit-cpp sentence splitter: Apache-2.0. PCRE2 10.44: BSD-3-Clause with the PCRE2 exception.
-
-It downloads Mozilla's Firefox Translations models, which are distributed under MPL-2.0.
-
-The app's licence screen (Settings → Licenses) shows the MIT licence, the libraries above with the Apache-2.0 text, and the build's translation notice: the ML Kit terms in the GitHub build, or, in the F-Droid build, the licence files of the engine components, copied from the submodules when the APK is built.
+The app's licence screen (Settings → Licenses) shows the MIT licence, the libraries above with the Apache-2.0 text, and the ML Kit translation terms.
 
 ## Japanese dictionary (downloaded on first use)
 
@@ -96,8 +89,6 @@ The IPADIC dictionary that Kuromoji uses is not bundled in the APK. The first ti
     writing, such person, organization or entity, will also be exempted
     from and not be held liable to the user for any such damages as noted
     above as far as the program is concerned.
-
-The F-Droid build downloads the same dictionary.
 
 ## Obtain and build this application's source
 

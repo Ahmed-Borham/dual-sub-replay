@@ -9,7 +9,7 @@ import java.io.File
 class LicenseAssetsTest {
     @Test
     fun sharedLicenceFilesExistAndTheGplIsGone() {
-        for (name in LICENSE_ASSETS - "licenses/distribution.txt") {
+        for (name in LICENSE_ASSETS) {
             assertTrue(name, File("src/main/assets/$name").isFile)
         }
         assertFalse(File("src/main/assets/licenses/GPL-3.0.txt").exists())
@@ -17,10 +17,8 @@ class LicenseAssetsTest {
     }
 
     @Test
-    fun fullBuildShipsItsOwnTranslationNotice() {
-        // The F-Droid build generates its file from the engine submodules (app/build.gradle.kts).
-        assertTrue("ML Kit" in File("src/full/assets/licenses/distribution.txt").readText())
-        assertFalse(File("src/main/assets/licenses/distribution.txt").exists())
+    fun theTranslationNoticeNamesMlKit() {
+        assertTrue("ML Kit" in File("src/main/assets/licenses/translation.txt").readText())
     }
 
     @Test

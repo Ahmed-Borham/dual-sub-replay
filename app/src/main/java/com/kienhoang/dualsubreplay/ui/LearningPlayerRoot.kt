@@ -65,7 +65,6 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.kienhoang.dualsubreplay.BuildConfig
 import com.kienhoang.dualsubreplay.assistant.AiAssistantViewModel
 import com.kienhoang.dualsubreplay.data.SubtitleSegment
 import kotlin.math.roundToInt
@@ -500,9 +499,8 @@ fun LearningPlayerRoot(viewModel: AppViewModel) {
     val phraseSelection = remember { PhraseSelectionController() }
     val translationEngineActions =
         remember(viewModel) { TranslationEngineActions(viewModel::setTranslationEngine, viewModel::tryGoogleTranslationAgain) }
-    // The F-Droid build has no assistant: no view model, no button, no settings section.
-    val aiViewModel: AiAssistantViewModel? = if (BuildConfig.AI_ASSISTANT) viewModel() else null
-    val aiAssistant = remember(aiViewModel) { aiViewModel?.let { ai -> AiAssistantHost(ai.controller) { ai.guide } } }
+    val aiViewModel: AiAssistantViewModel = viewModel()
+    val aiAssistant = remember(aiViewModel) { AiAssistantHost(aiViewModel.controller) { aiViewModel.guide } }
     CompositionLocalProvider(
         LocalPhraseSelection provides phraseSelection,
         LocalLanguageDownloads provides viewModel.languageDownloads,
@@ -580,17 +578,15 @@ fun LearningPlayerRoot(viewModel: AppViewModel) {
             }
 
             // Last, so the panel covers the player and the subtitle overlay.
-            aiAssistant?.let { host ->
-                BindAiAppActions(host, viewModel, mode, ::selectMode)
-                AiAssistantOverlay(
-                    host = host,
-                    state = state,
-                    playerMode = mode,
-                    fullscreen = youtubeFullscreen,
-                    onTryGoogleAgain = viewModel::tryGoogleTranslationAgain,
-                    onRetry = viewModel::retryCaptions,
-                )
-            }
+            BindAiAppActions(aiAssistant, viewModel, mode, ::selectMode)
+            AiAssistantOverlay(
+                host = aiAssistant,
+                state = state,
+                playerMode = mode,
+                fullscreen = youtubeFullscreen,
+                onTryGoogleAgain = viewModel::tryGoogleTranslationAgain,
+                onRetry = viewModel::retryCaptions,
+            )
         }
     }
 }

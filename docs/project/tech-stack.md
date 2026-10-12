@@ -39,15 +39,11 @@ Paths below are relative to
   transcript text/timing on disk and exposes bounded playback windows. Preserve
   bounded loading and cancellation when changing long-video behavior.
 - `translation/OnDeviceTranslator.kt` uses downloadable ML Kit models with memory
-  and disk caches. It lives in `app/src/full/java`; the F-Droid build
-  (`-Pdistribution=fdroid`) uses `app/src/fdroid/java` without ML Kit: Mozilla's Bergamot
-  engine (native, from the `app/src/fdroid/cpp` submodules) with downloadable Firefox
-  Translations models. `translation/BergamotCatalog.kt` in main holds its testable model
-  catalog and routing logic. See [F-Droid distribution](../fdroid/README.md). `ui/PlaybackTranslation.kt` and `TranslationCoordinator.kt`
+  and disk caches. `ui/PlaybackTranslation.kt` and `TranslationCoordinator.kt`
   support playback-prioritized work; obsolete loads must not update current state.
-  Both translators also list, download and remove whole languages for the
+  It also lists, downloads and removes whole languages for the
   Settings → Translation → Languages on this device screen (`ui/LanguageDownloads.kt`).
-- `translation/GoogleWebTranslator.kt` is the default engine in the GitHub build (Settings →
+- `translation/GoogleWebTranslator.kt` is the default engine (Settings →
   Translation → Google Translate, `translation/TranslationEngine.kt`). It calls Google Translate's
   unofficial web endpoints with its own caches, sending upcoming sentences in one batch request
   (`translatePlaybackWindow`'s `prefetch`) and retrying short outages; `AppViewModel.translateText` routes every
@@ -57,9 +53,8 @@ Paths below are relative to
   (`DualSubUiState.onDeviceFallback`), shows `ui/OnlineTranslationNotice.kt`'s top-right icon, and
   checks Google again every 2 minutes; the next load tries Google first. See the
   [blank-lines spec](../specs/2026-10-09-google-blank-lines-and-five-minutes-ahead.md).
-  `BuildConfig.ONLINE_TRANSLATION` is false in the F-Droid build, which stays on-device.
   See the [spec](../specs/2026-10-05-opt-in-google-translate.md).
-- `assistant/` is the AI assistant (GitHub build only, `BuildConfig.AI_ASSISTANT`).
+- `assistant/` is the AI assistant.
   `AiChatClient.kt` speaks the OpenAI-compatible `/chat/completions` format over OkHttp (HTTPS
   only, no redirects, IPv4 first, 1 MiB response cap) for Gemini, OpenRouter, OpenAI, OpenCode Zen
   and Go, or a custom address (`AiProvider.kt`), and lists the service's models from `/models`.
@@ -113,10 +108,9 @@ Paths below are relative to
 - Keep caption-provider host allowlists, response limits (currently 8 MiB), timeout
   budgets, and cancellation. Undocumented YouTube behavior belongs behind the provider
   boundary so it can change without rewriting the learning UI.
-- No user-provided/developer-provisioned service key is required for translation. The GitHub
-  build translates with Google Translate online by default (owner decision 2026-10-05) and must
-  keep a Settings switch to on-device translation and fall back to it when Google fails. The
-  F-Droid build never translates online. YouTube's internal client key handling is an extraction detail, not a
+- No user-provided/developer-provisioned service key is required for translation. The app
+  translates with Google Translate online by default (owner decision 2026-10-05) and must
+  keep a Settings switch to on-device translation and fall back to it when Google fails. YouTube's internal client key handling is an extraction detail, not a
   new application API-key setup requirement.
 - The AI assistant is the only feature that takes a user's own API key (owner decision
   2026-10-08). It sends nothing without a key and a question, never runs on a project server or

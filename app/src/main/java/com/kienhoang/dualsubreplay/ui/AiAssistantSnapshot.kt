@@ -14,7 +14,6 @@ internal fun aiAppSnapshot(
 ): AiAppSnapshot =
     AiAppSnapshot(
         appVersion = appVersion,
-        build = if (state.onlineTranslationAvailable) "GitHub" else "F-Droid",
         replyLanguage = interfaceLocale.getDisplayLanguage(Locale.ENGLISH).ifBlank { "English" },
         sourceLanguage =
             (state.resolvedSourceLanguage ?: state.sourcePreference.takeUnless { it == "auto" })
