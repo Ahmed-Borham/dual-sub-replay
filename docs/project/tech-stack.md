@@ -63,6 +63,9 @@ Paths below are relative to
   `AiChatClient.kt` speaks the OpenAI-compatible `/chat/completions` format over OkHttp (HTTPS
   only, no redirects, IPv4 first, 1 MiB response cap) for Gemini, OpenRouter, OpenAI, OpenCode Zen
   and Go, or a custom address (`AiProvider.kt`), and lists the service's models from `/models`.
+  Claude uses Anthropic's own Messages API (`AiAnthropicMessages.kt`, `x-api-key` header) through
+  the same client; an answer that asks for actions goes back unchanged, thinking included, with
+  their results.
   `AiAttachmentReader.kt` turns chosen pictures (scaled JPEG), PDFs and text files into message
   parts that live only in memory. `AiKeyStore.kt` keeps one key per service, AES-GCM encrypted with an Android
   Keystore key, in the `ai_assistant_keys` preferences; `AiChatHistory.kt` keeps chats in
@@ -83,7 +86,8 @@ Paths below are relative to
   `PracticeTransfer.kt` handles JSON/Anki TSV transfer. `data/ImmersionRepository.kt` keeps
   watched time per local day and language in a separate SQLite database; `ImmersionStats.kt`
   holds the testable tracking, batching and aggregation used by `ui/ProgressScreen.kt`. App preferences use Android
-  SharedPreferences. `ui/WordPronouncer.kt` manages Android speech-engine fallback.
+  SharedPreferences. `ui/WordPronouncer.kt` manages Android speech-engine fallback; Japanese words
+  are spoken from their kana reading (`spokenText` in `ui/Pronunciation.kt`), not the kanji.
   `ui/PhraseSelection.kt` owns word/phrase selection in subtitle lines and its Copy /
   Translate / Pronounce bar; `ui/WordLearningSheet.kt` is the card Translate opens.
   `ui/PronunciationCache.kt` keeps the recorded speech of the last pronounced word only.

@@ -45,9 +45,10 @@ class AiSettingsTest {
     @Test
     fun everyBuiltInServiceHasAnHttpsChatAddress() {
         AiProvider.entries.filter { it != AiProvider.CUSTOM }.forEach { provider ->
-            val url = chatCompletionsUrl(provider.baseUrl)
+            val anthropic = provider.format == AiWireFormat.ANTHROPIC_MESSAGES
+            val url = if (anthropic) anthropicMessagesUrl(provider.baseUrl) else chatCompletionsUrl(provider.baseUrl)
             assertEquals(provider.name, "https", url?.scheme)
-            assertTrue(provider.name, url.toString().endsWith("/chat/completions"))
+            assertTrue(provider.name, url.toString().endsWith(if (anthropic) "/v1/messages" else "/chat/completions"))
             assertTrue(provider.name, provider.defaultModel.isNotBlank())
             assertTrue(provider.name, provider.keyPageUrl!!.startsWith("https://"))
         }
@@ -92,6 +93,47 @@ class AiSettingsTest {
         assertEquals(AiProvider.OPENAI, aiProviderForKey("sk-proj-0123456789abcdef", AiProvider.OPENCODE_ZEN))
         assertEquals(AiProvider.GEMINI, aiProviderForKey("gsk_0123456789abcdefghij", AiProvider.GEMINI))
         assertEquals(AiProvider.CUSTOM, aiProviderForKey("AIza-FAKE-test-key-for-unit-tests-rstu", AiProvider.CUSTOM))
+    }
+
+    @Test
+    fun anAnthropicKeyMeansClaudeEvenFromAnotherSkService() {
+        val key = "sk-ant-api03-0123456789abcdefghij"
+        for (current in listOf(AiProvider.GEMINI, AiProvider.OPENAI, AiProvider.OPENCODE_ZEN, AiProvider.OPENROUTER)) {
+            assertEquals(current.name, AiProvider.CLAUDE, aiProviderForKey(key, current))
+        }
+        assertEquals(AiProvider.CUSTOM, aiProviderForKey(key, AiProvider.CUSTOM))
+        assertEquals("https://api.anthropic.com/v1/messages", anthropicMessagesUrl(AiProvider.CLAUDE.baseUrl).toString())
+        assertEquals("https://api.anthropic.com/v1/models", modelsUrl(AiProvider.CLAUDE.baseUrl).toString())
+    }
+
+    @Test
+    fun newGeminiKeysStartOnFlashLiteAndTheQuickListHasNoFixedVersions() {
+        assertEquals("gemini-flash-lite-latest", AiAssistantSettings().modelFor(AiProvider.GEMINI))
+        assertEquals(listOf("gemini-flash-lite-latest", "gemini-flash-latest"), AiProvider.GEMINI.suggestedModels)
+        assertEquals("claude-haiku-5-5", AiProvider.CLAUDE.defaultModel)
+        assertEquals(listOf("claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5"), AiProvider.CLAUDE.suggestedModels)
+    }
+
+    @Test
+    fun aKeyCheckedWithAnOldDefaultKeepsThatModelUntilAnotherIsChosen() {
+        val gemini = AiProvider.GEMINI.baseUrl
+        val oldDefault = mapOf(AiProvider.GEMINI to "$gemini\ngemini-flash-latest")
+        assertEquals(mapOf(AiProvider.GEMINI to "gemini-flash-latest"), aiModelsKeptFromChecks(AiAssistantSettings(), oldDefault).models)
+        // A chosen model, a check with today's default, or no check at all change nothing.
+        val chosen = AiAssistantSettings(models = mapOf(AiProvider.GEMINI to "gemini-pro-latest"))
+        assertEquals(chosen, aiModelsKeptFromChecks(chosen, oldDefault))
+        val today = mapOf(AiProvider.GEMINI to "$gemini\ngemini-flash-lite-latest")
+        assertEquals(AiAssistantSettings(), aiModelsKeptFromChecks(AiAssistantSettings(), today))
+        assertEquals(AiAssistantSettings(), aiModelsKeptFromChecks(AiAssistantSettings(), emptyMap()))
+        // A check through another address, or Other's blank default, keeps nothing either.
+        assertEquals(
+            AiAssistantSettings(),
+            aiModelsKeptFromChecks(
+                AiAssistantSettings(),
+                mapOf(AiProvider.GEMINI to "https://x.example/v1\nm"),
+            ),
+        )
+        assertEquals(AiAssistantSettings(), aiModelsKeptFromChecks(AiAssistantSettings(), mapOf(AiProvider.CUSTOM to "\n")))
     }
 
     @Test

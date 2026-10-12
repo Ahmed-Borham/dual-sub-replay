@@ -134,6 +134,9 @@
     <string name="ai_attachment_question">Explique isto, por favor.</string>
     <string name="ai_error_unsupported_attachment">Este modelo não lê imagens nem PDFs. Escolha outro modelo abaixo da caixa de mensagem e toque em Tentar de novo, ou pergunte sem eles.</string>
     <string name="ai_setup_step_create_opencode">Na página do seu workspace, abra API Keys, toque em Create API Key e copie a chave.</string>
+    <string name="ai_provider_claude_note">Pago, da Anthropic</string>
+    <string name="ai_setup_step_get_claude">Toque em “Obter chave” e entre na sua conta. A Anthropic cobra pelo uso, então adicione créditos antes.</string>
+    <string name="ai_setup_step_create_claude">Toque em “Create Key” (Criar chave), dê um nome e copie a chave.</string>
     <string name="ai_action_on">Ativado</string>
     <string name="ai_action_off">Desativado</string>
     <string name="ai_action_setting">%1$s: %2$s</string>

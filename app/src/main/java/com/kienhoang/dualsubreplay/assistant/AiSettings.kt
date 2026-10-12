@@ -142,6 +142,9 @@ internal fun chatCompletionsUrl(baseUrl: String): HttpUrl? = aiServiceUrl(baseUr
 /** The `models` list under [baseUrl], with the same rules as [chatCompletionsUrl]. */
 internal fun modelsUrl(baseUrl: String): HttpUrl? = aiServiceUrl(baseUrl, "models")
 
+/** Anthropic's `messages` address under [baseUrl], with the same rules as [chatCompletionsUrl]. */
+internal fun anthropicMessagesUrl(baseUrl: String): HttpUrl? = aiServiceUrl(baseUrl, "messages")
+
 private fun aiServiceUrl(
     baseUrl: String,
     vararg path: String,
@@ -165,3 +168,25 @@ internal fun aiCheckedSetup(
     settings: AiAssistantSettings,
     provider: AiProvider,
 ): String = settings.baseUrlFor(provider) + "\n" + settings.modelFor(provider)
+
+/**
+ * Keeps a working model when a service's default changes: a key that was checked with another
+ * model than today's default, while no model was chosen, keeps that model. Otherwise the chat
+ * would need a new key check after an update. Keys added later get the new default.
+ */
+internal fun aiModelsKeptFromChecks(
+    settings: AiAssistantSettings,
+    checkedSetups: Map<AiProvider, String>,
+): AiAssistantSettings {
+    val kept =
+        checkedSetups
+            .mapNotNull { (provider, setup) ->
+                val chosen = settings.models[provider]?.trim().orEmpty()
+                val baseUrl = setup.substringBefore('\n')
+                val model = setup.substringAfter('\n', "")
+                val keep =
+                    chosen.isEmpty() && baseUrl == settings.baseUrlFor(provider) && model.isNotBlank() && model != provider.defaultModel
+                if (keep) provider to model else null
+            }.toMap()
+    return if (kept.isEmpty()) settings else settings.copy(models = settings.models + kept)
+}

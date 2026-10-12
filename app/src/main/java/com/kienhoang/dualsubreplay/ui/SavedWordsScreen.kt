@@ -171,7 +171,10 @@ internal fun SavedWordsScreen(
                     Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(selected.word, style = MaterialTheme.typography.headlineMedium)
                         selected.reading?.let { Text(it) }
-                        TextButton(onClick = { onPause(); pronouncer.speak(selected.word, selected.wordLanguage) }) { Text(pronounceLabel) }
+                        TextButton(onClick = {
+                            onPause()
+                            pronouncer.speak(spokenWord(selected.word, selected.reading), selected.wordLanguage)
+                        }) { Text(pronounceLabel) }
                         pronouncer.message?.let { Text(it) }
                         if (pronouncer.showSpeechSettings) {
                             TextButton(

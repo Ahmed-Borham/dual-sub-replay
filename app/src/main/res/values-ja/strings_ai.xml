@@ -134,6 +134,9 @@
     <string name="ai_attachment_question">これを説明してください。</string>
     <string name="ai_error_unsupported_attachment">このモデルは画像や PDF を読めません。チャット欄の下で別のモデルを選んで「もう一度試す」をタップするか、添付なしで質問してください。</string>
     <string name="ai_setup_step_create_opencode">ワークスペースのページで API Keys を開き、Create API Key をタップしてキーをコピーします。</string>
+    <string name="ai_provider_claude_note">有料、Anthropic 提供</string>
+    <string name="ai_setup_step_get_claude">「キーを取得」をタップしてログインします。Anthropic は有料なので、先にクレジットを追加してください。</string>
+    <string name="ai_setup_step_create_claude">「Create Key」(キーを作成) をタップして名前を付け、キーをコピーします。</string>
     <string name="ai_action_on">オン</string>
     <string name="ai_action_off">オフ</string>
     <string name="ai_action_setting">%1$s：%2$s</string>

@@ -10,6 +10,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.test.platform.app.InstrumentationRegistry
 import com.kienhoang.dualsubreplay.data.CaptionLanguage
 import com.kienhoang.dualsubreplay.ui.theme.DualSubTheme
 import org.junit.Assert.assertEquals
@@ -127,6 +128,46 @@ class LearningPlayerUiTest {
                 portraitPanelPosition.floatValue,
                 0f,
             )
+        }
+    }
+
+    @Test
+    fun pronunciationVolumeIsSavedFromWordLearningSettings() {
+        val preferences =
+            InstrumentationRegistry.getInstrumentation().targetContext.getSharedPreferences("dual_sub_preferences", 0)
+        preferences.edit().remove(PRONUNCIATION_VOLUME_PREFERENCE).commit()
+        try {
+            composeRule.setContent {
+                DualSubTheme {
+                    SubtitleSettingsDialog(
+                        sourcePreference = "auto",
+                        targetLanguage = "vi",
+                        availableSourceLanguages = listOf(CaptionLanguage("en", "English")),
+                        fontScale = 1f,
+                        landscapeSplitEnabled = true,
+                        playerMode = PlayerExperienceMode.TRANSCRIPT_PANEL,
+                        onSourceChange = {},
+                        onTargetChange = {},
+                        onFontScaleChange = {},
+                        onLandscapeSplitChange = {},
+                        onDismiss = {},
+                    )
+                }
+            }
+
+            composeRule.onNodeWithTag("settings_section_word_learning").performScrollTo().performClick()
+            composeRule.onNodeWithText("Pronunciation volume: 100%").performScrollTo().assertIsDisplayed()
+            composeRule
+                .onNodeWithTag("pronunciation_volume_slider")
+                .performScrollTo()
+                .performSemanticsAction(SemanticsActions.SetProgress) { setProgress -> setProgress(1.5f) }
+            composeRule.onNodeWithText("Pronunciation volume: 150%").performScrollTo().assertIsDisplayed()
+            composeRule.runOnIdle {
+                assertEquals(1.5f, preferences.getFloat(PRONUNCIATION_VOLUME_PREFERENCE, 0f), 0f)
+            }
+            saveUiEvidence("pronunciation-volume-setting")
+        } finally {
+            preferences.edit().remove(PRONUNCIATION_VOLUME_PREFERENCE).commit()
         }
     }
 

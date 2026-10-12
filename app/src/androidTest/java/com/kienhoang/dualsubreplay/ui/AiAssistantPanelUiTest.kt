@@ -147,7 +147,7 @@ class AiAssistantPanelUiTest {
                     override fun clear() = Unit
                 },
             io = Dispatchers.Unconfined,
-            modelLister = { _, _ -> listOf(AiModelInfo("gemini-flash-latest"), AiModelInfo("gemma-4-31b-it", free = true)) },
+            modelLister = { _, _, _ -> listOf(AiModelInfo("gemini-flash-latest"), AiModelInfo("gemma-4-31b-it", free = true)) },
             memoryStorage = memory,
         )
     }
@@ -242,6 +242,11 @@ class AiAssistantPanelUiTest {
         composeRule.onNodeWithText("Get a key").assertExists()
         composeRule.onNode(hasText("Create new secret key", substring = true)).assertExists()
         assertEquals(AiProvider.OPENAI, settings.provider)
+        composeRule.onNodeWithTag("ai_provider_claude").performScrollTo().performClick()
+        composeRule.onNodeWithTag("ai_provider_claude").assertIsSelected()
+        composeRule.onNodeWithText("Paid, from Anthropic").assertExists()
+        composeRule.onNode(hasText("Create Key", substring = true)).assertExists()
+        assertEquals(AiProvider.CLAUDE, settings.provider)
         composeRule.onNodeWithTag("ai_provider_opencode_zen").performScrollTo().performClick()
         assertEquals(AiProvider.OPENCODE_ZEN, settings.provider)
         composeRule.onNodeWithTag("ai_close_button").performClick()
@@ -419,11 +424,13 @@ class AiAssistantPanelUiTest {
         checkedGeminiKey()
         showTopBarAndPanel(DualSubUiState())
         composeRule.onNodeWithTag("ai_assistant_button").performClick()
-        composeRule.onNodeWithTag("ai_model_button").assertTextContains("gemini-flash-latest")
+        composeRule.onNodeWithTag("ai_model_button").assertTextContains("gemini-flash-lite-latest")
         composeRule.onNodeWithTag("ai_model_button").performClick()
-        composeRule.onNodeWithText("gemini-2.5-flash").performClick()
-        composeRule.onNodeWithTag("ai_model_button").assertTextContains("gemini-2.5-flash")
-        assertEquals("gemini-2.5-flash", requests.last().model)
+        // Fixed versions such as gemini-2.5-flash are on the full model page only.
+        composeRule.onNodeWithText("gemini-2.5-flash").assertDoesNotExist()
+        composeRule.onNodeWithText("gemini-flash-latest").performClick()
+        composeRule.onNodeWithTag("ai_model_button").assertTextContains("gemini-flash-latest")
+        assertEquals("gemini-flash-latest", requests.last().model)
         composeRule.onNodeWithTag("ai_effort_button").performClick()
         composeRule.onNodeWithTag("ai_effort_high").performClick()
         assertEquals(AiThinking.HIGH, settings.thinking)

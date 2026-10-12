@@ -35,11 +35,16 @@ internal data class AiToolCall(
     val rawJson: String,
 )
 
-/** What the model answered: text, actions it asks for, or both. [model] is the model that answered, when the service says. */
+/**
+ * What the model answered: text, actions it asks for, or both. [model] is the model that answered,
+ * when the service says. [rawContent] is Claude's whole answer when it asked for actions, sent back
+ * unchanged with their results ([AiWireMessage.rawContent]); null for other services.
+ */
 internal data class AiReply(
     val text: String,
     val toolCalls: List<AiToolCall> = emptyList(),
     val model: String = "",
+    val rawContent: String? = null,
 )
 
 /** The calls in a reply's `message.tool_calls`; calls without a name are skipped. */

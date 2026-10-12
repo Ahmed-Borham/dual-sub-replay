@@ -78,6 +78,7 @@ import com.kienhoang.dualsubreplay.data.CaptionLanguage
 import com.kienhoang.dualsubreplay.translation.TranslationEngine
 import com.kienhoang.dualsubreplay.translation.TranslationLanguages
 import java.util.Locale
+import kotlin.math.roundToInt
 
 /** Collapsible groups that replace the old single "More settings" list. */
 internal enum class MoreSettingsSection(
@@ -711,6 +712,7 @@ private fun WordLearningSettings(
         onCheckedChange = onAutoPronounceChange,
         testTag = "auto_pronounce_switch",
     )
+    PronunciationVolumeSetting()
     SettingsSwitchRow(
         title = stringResource(R.string.settings_word_learning_mode_title),
         description = stringResource(R.string.settings_word_learning_mode_description),
@@ -751,6 +753,39 @@ private fun WordLearningSettings(
         onCheckedChange = onWordLearningActiveOnlyChange,
         testTag = "word_learning_active_only_switch",
     )
+}
+
+/** How loud words are spoken; saved straight away and read again each time a word is spoken. */
+@Composable
+private fun PronunciationVolumeSetting() {
+    val context = LocalContext.current
+    val preferences = remember(context) { context.getSharedPreferences("dual_sub_preferences", 0) }
+    var volume by remember { mutableStateOf(readPronunciationVolume(context)) }
+    DisposableEffect(preferences) {
+        // "Reset all settings" removes the key while this section is open.
+        val listener =
+            SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+                if (key == PRONUNCIATION_VOLUME_PREFERENCE || key == null) volume = readPronunciationVolume(context)
+            }
+        preferences.registerOnSharedPreferenceChangeListener(listener)
+        onDispose { preferences.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+        Text(stringResource(R.string.settings_pronunciation_volume_title, (volume * 100).roundToInt()))
+        Text(
+            stringResource(R.string.settings_pronunciation_volume_description, (DEFAULT_PRONUNCIATION_VOLUME * 100).roundToInt()),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Slider(
+            value = volume,
+            onValueChange = { volume = storedPronunciationVolume(it) },
+            onValueChangeFinished = { preferences.edit().putFloat(PRONUNCIATION_VOLUME_PREFERENCE, volume).apply() },
+            valueRange = MIN_PRONUNCIATION_VOLUME..MAX_PRONUNCIATION_VOLUME,
+            steps = PRONUNCIATION_VOLUME_STEPS,
+            modifier = Modifier.testTag("pronunciation_volume_slider"),
+        )
+    }
 }
 
 @Composable

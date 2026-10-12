@@ -16,6 +16,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 
@@ -72,30 +73,34 @@ internal class WordPronouncer(context: Context) {
         word: String,
         language: String,
     ): PronunciationResult {
+        val volume = readPronunciationVolume(application)
         cache.lookup(word, language)?.let { audio ->
-            if (withTimeoutOrNull(15_000) { playSpeechFile(audio) } == true) return PronunciationResult.SPOKEN
+            if (withTimeoutOrNull(15_000) { playSpeechFile(audio, volume) } == true) return PronunciationResult.SPOKEN
         }
         val file = cache.prepare(word, language)
-        val recorded = attempt(word, language) { synthesize(word, file) && file.length() > 0 }
+        val recorded = attempt(word, language, volume) { synthesize(word, file) && file.length() > 0 }
         if (recorded == PronunciationResult.SPOKEN) {
+            // Engines record at very different levels; bring quiet recordings up to full loudness.
+            withContext(Dispatchers.IO) { normalizeSpeechFile(file) }
             cache.markReady()
-            if (withTimeoutOrNull(15_000) { playSpeechFile(file) } == true) return PronunciationResult.SPOKEN
+            if (withTimeoutOrNull(15_000) { playSpeechFile(file, volume) } == true) return PronunciationResult.SPOKEN
         }
         cache.clear()
         // Only a recording or playback failure is worth a second try; the rest fail the same way.
         if (recorded != PronunciationResult.SPOKEN && recorded != PronunciationResult.PLAYBACK_FAILED) return recorded
-        return attempt(word, language) { speak(word) }
+        return attempt(word, language, volume) { speak(word) }
     }
 
     private suspend fun attempt(
         word: String,
         language: String,
+        volume: Float,
         render: suspend PronunciationEngine.() -> Boolean,
     ): PronunciationResult =
         try {
             withTimeoutOrNull(25_000) {
                 pronounceWord(word, language, installedPronunciationEngines(application), render) {
-                    AndroidPronunciationEngine(application, it)
+                    AndroidPronunciationEngine(application, it, volume)
                 }
             } ?: PronunciationResult.PLAYBACK_FAILED
         } catch (cancel: CancellationException) {

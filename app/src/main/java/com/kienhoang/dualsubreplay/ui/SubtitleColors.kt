@@ -133,6 +133,7 @@ internal fun effectiveHighlightColor(state: DualSubUiState): Color = if (
 /** Every preference key that "Reset all settings to defaults" clears (issue #22). */
 val RESETTABLE_SETTING_KEYS = listOf(
     "auto_pronounce",
+    PRONUNCIATION_VOLUME_PREFERENCE,
     "font_scale",
     PORTRAIT_PANEL_OFFSET_PREFERENCE,
     "preferred_caption_language",

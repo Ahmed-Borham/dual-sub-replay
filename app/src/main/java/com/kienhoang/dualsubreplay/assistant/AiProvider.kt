@@ -3,10 +3,19 @@ package com.kienhoang.dualsubreplay.assistant
 import androidx.annotation.StringRes
 import com.kienhoang.dualsubreplay.R
 
+/** How a service's requests and replies are written. */
+internal enum class AiWireFormat {
+    /** OpenAI's `chat/completions`, with a `Bearer` key; Gemini through Google's OpenAI-compatible endpoint. */
+    OPENAI_CHAT,
+
+    /** Anthropic's own Messages API (`messages`), with an `x-api-key` key. */
+    ANTHROPIC_MESSAGES,
+}
+
 /**
- * The AI services the assistant can use with the user's own key. Every one of them speaks the
- * OpenAI "chat completions" format; Gemini through Google's OpenAI-compatible endpoint.
- * Model names expire, so the defaults live here and the model field in settings overrides them.
+ * The AI services the assistant can use with the user's own key. All but [CLAUDE] speak the
+ * OpenAI "chat completions" format. Model names expire, so the defaults live here and the model
+ * field in settings overrides them.
  */
 internal enum class AiProvider(
     val key: String,
@@ -25,20 +34,23 @@ internal enum class AiProvider(
     @StringRes val createKeyStepRes: Int,
     /** A few models to offer first in the model menu; the full list comes from the service. */
     val suggestedModels: List<String>,
+    val format: AiWireFormat = AiWireFormat.OPENAI_CHAT,
 ) {
     GEMINI(
         key = "gemini",
         labelRes = R.string.ai_provider_gemini,
         noteRes = R.string.ai_provider_gemini_note,
         baseUrl = "https://generativelanguage.googleapis.com/v1beta/openai",
-        defaultModel = "gemini-flash-latest",
+        // Owner decision 2026-10-11: new keys start on Flash-Lite; Flash is next in the model menu.
+        defaultModel = "gemini-flash-lite-latest",
         keyPageUrl = "https://aistudio.google.com/apikey",
         freeKeys = true,
         getKeyStepRes = R.string.ai_setup_step_get_google,
         createKeyStepRes = R.string.ai_setup_step_create,
-        // Google's "latest" names follow each new release, so they do not expire.
+        // Google's "latest" names follow each new release, so they do not expire. Fixed versions
+        // such as gemini-2.5-flash are on the full model page only.
         // gemini-pro-latest is left out: free keys have no quota for it.
-        suggestedModels = listOf("gemini-flash-latest", "gemini-flash-lite-latest", "gemini-2.5-flash"),
+        suggestedModels = listOf("gemini-flash-lite-latest", "gemini-flash-latest"),
     ),
     OPENROUTER(
         key = "openrouter",
@@ -64,6 +76,22 @@ internal enum class AiProvider(
         getKeyStepRes = R.string.ai_setup_step_get_openai,
         createKeyStepRes = R.string.ai_setup_step_create_openai,
         suggestedModels = listOf("gpt-5-mini", "gpt-5-nano", "gpt-5"),
+    ),
+
+    /** Anthropic's Claude, through its own Messages API. Keys start with `sk-ant-`. */
+    CLAUDE(
+        key = "claude",
+        labelRes = R.string.ai_provider_claude,
+        noteRes = R.string.ai_provider_claude_note,
+        baseUrl = "https://api.anthropic.com/v1",
+        // The cheapest current Claude model; Sonnet and Opus are a tap away in the model menu.
+        defaultModel = "claude-haiku-5-5",
+        keyPageUrl = "https://platform.claude.com/settings/keys",
+        freeKeys = false,
+        getKeyStepRes = R.string.ai_setup_step_get_claude,
+        createKeyStepRes = R.string.ai_setup_step_create_claude,
+        suggestedModels = listOf("claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5"),
+        format = AiWireFormat.ANTHROPIC_MESSAGES,
     ),
 
     /** OpenCode's pay-per-use gateway, with a few free models; only its chat/completions models work here. */
@@ -125,7 +153,8 @@ internal fun looksLikeAiKey(text: String): Boolean {
 
 /**
  * The service a pasted key belongs to, from its well-known start, so people who do not know what
- * an API is rarely have to pick one. A plain `sk-` key could be OpenAI's or OpenCode's, so it
+ * an API is rarely have to pick one. Anthropic's keys start with `sk-ant-`, before the plainer
+ * `sk-` checks. A plain `sk-` key could be OpenAI's or OpenCode's, so it
  * keeps a service that uses such keys and otherwise means OpenAI. [CUSTOM] keeps every key.
  */
 internal fun aiProviderForKey(
@@ -138,6 +167,7 @@ internal fun aiProviderForKey(
         // Google AI Studio's keys start with "AIza", and its newer ones with "AQ.".
         key.startsWith("AIza") || key.startsWith("AQ.") -> AiProvider.GEMINI
         key.startsWith("sk-or-") -> AiProvider.OPENROUTER
+        key.startsWith("sk-ant-") -> AiProvider.CLAUDE
         key.startsWith("sk-proj-") || key.startsWith("sk-svcacct-") -> AiProvider.OPENAI
         key.startsWith("sk-") && current in SK_KEY_PROVIDERS -> current
         key.startsWith("sk-") -> AiProvider.OPENAI

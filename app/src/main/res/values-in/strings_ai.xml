@@ -134,6 +134,9 @@
     <string name="ai_attachment_question">Tolong jelaskan ini.</string>
     <string name="ai_error_unsupported_attachment">Model ini tidak bisa membaca gambar atau PDF. Pilih model lain di bawah kotak obrolan lalu ketuk Coba lagi, atau bertanya tanpa lampiran.</string>
     <string name="ai_setup_step_create_opencode">Di halaman workspace, buka API Keys, ketuk Create API Key, lalu salin kuncinya.</string>
+    <string name="ai_provider_claude_note">Berbayar, dari Anthropic</string>
+    <string name="ai_setup_step_get_claude">Ketuk “Dapatkan kunci” lalu masuk. Anthropic berbayar, jadi isi saldo terlebih dahulu.</string>
+    <string name="ai_setup_step_create_claude">Ketuk “Create Key” (Buat kunci), beri nama, lalu salin kuncinya.</string>
     <string name="ai_action_on">Aktif</string>
     <string name="ai_action_off">Nonaktif</string>
     <string name="ai_action_setting">%1$s: %2$s</string>
