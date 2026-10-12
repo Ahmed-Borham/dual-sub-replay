@@ -37,8 +37,6 @@ internal class TranslationEngineActions(
 
 /** What Settings → Translation shows about the online engine. */
 internal data class OnlineTranslationSettings(
-    /** False in the F-Droid build, which never offers the online engine. */
-    val available: Boolean = false,
     val engine: TranslationEngine = TranslationEngine.ON_DEVICE,
 )
 

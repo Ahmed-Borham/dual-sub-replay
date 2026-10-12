@@ -14,7 +14,7 @@ GRADLE = "app/build.gradle.kts"
 VERSION = re.compile(r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)")
 MARKER = re.compile(r"<!-- automatic-release-v1 (\{[^\n]+\}) -->")
 # Every job in .github/workflows/android.yml; a test keeps this list in sync with the workflow.
-REQUIRED_JOBS = {"verify-build", "managed-device-tests", "fdroid-build", "fdroid-device-tests"}
+REQUIRED_JOBS = {"verify-build", "managed-device-tests"}
 
 
 def command(*args, input_text=None):

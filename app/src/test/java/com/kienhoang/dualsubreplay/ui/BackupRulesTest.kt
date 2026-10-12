@@ -15,7 +15,7 @@ import javax.xml.parsers.DocumentBuilderFactory
  * YouTube/Google sign-in cookies, and the AI assistant's keys and chats, on every Android version.
  */
 class BackupRulesTest {
-    private val regenerable = setOf("japanese-dictionary/", "translation-models/")
+    private val regenerable = setOf("japanese-dictionary/")
     private val aiPrivate =
         setOf("sharedpref:$AI_KEYS_PREFERENCES.xml", "file:$AI_CHATS_DIRECTORY/", "file:$AI_MEMORY_DIRECTORY/")
     private val excluded = regenerable.map { "file:$it" }.toSet() + "root:app_webview/" + aiPrivate

@@ -49,7 +49,7 @@ class OnlineTranslationUiTest {
     fun googleSwitchIsOnForTheDefaultEngineAndTurnsOffToOnDevice() {
         val chosen = mutableListOf<TranslationEngine>()
         showTranslationSettings(
-            OnlineTranslationSettings(available = true, engine = TranslationEngine.GOOGLE_WEB),
+            OnlineTranslationSettings(engine = TranslationEngine.GOOGLE_WEB),
             TranslationEngineActions(select = { chosen += it }),
         )
         composeRule
@@ -64,7 +64,7 @@ class OnlineTranslationUiTest {
     fun googleSwitchTurnsOnToChooseGoogle() {
         val chosen = mutableListOf<TranslationEngine>()
         showTranslationSettings(
-            OnlineTranslationSettings(available = true, engine = TranslationEngine.ON_DEVICE),
+            OnlineTranslationSettings(engine = TranslationEngine.ON_DEVICE),
             TranslationEngineActions(select = { chosen += it }),
         )
         composeRule
@@ -73,12 +73,6 @@ class OnlineTranslationUiTest {
             .assertIsOff()
             .performClick()
         assertEquals(listOf(TranslationEngine.GOOGLE_WEB), chosen)
-    }
-
-    @Test
-    fun googleSwitchIsHiddenWhenTheBuildCannotTranslateOnline() {
-        showTranslationSettings(OnlineTranslationSettings(available = false, engine = TranslationEngine.GOOGLE_WEB))
-        composeRule.onNodeWithTag("google_translate_switch").assertDoesNotExist()
     }
 
     @Test

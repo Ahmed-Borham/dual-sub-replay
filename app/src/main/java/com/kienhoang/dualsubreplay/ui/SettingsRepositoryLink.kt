@@ -26,8 +26,8 @@ import kotlinx.coroutines.launch
 
 internal const val REPOSITORY_URL = "https://github.com/hoangkien1703/dual-sub-replay"
 
-/** The app's licence, the shared libraries' notices, then the build's own translation notices. */
-internal val LICENSE_ASSETS = listOf("licenses/MIT.txt", "licenses/libraries.txt", "licenses/distribution.txt")
+/** The app's licence, the libraries' notices, then the ML Kit translation terms. */
+internal val LICENSE_ASSETS = listOf("licenses/MIT.txt", "licenses/libraries.txt", "licenses/translation.txt")
 
 @Composable
 internal fun SettingsRepositoryLink(onOpen: (() -> Unit)? = null, beforeOpen: suspend () -> Unit = {}) {

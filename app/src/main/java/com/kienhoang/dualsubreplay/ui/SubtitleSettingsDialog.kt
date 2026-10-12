@@ -519,7 +519,7 @@ internal fun SubtitleSettingsDialog(
                     }
 
                     Section(MoreSettingsSection.TRANSLATION, Icons.Default.Translate) {
-                        if (onlineTranslation.available && translationEngineActions != null) {
+                        if (translationEngineActions != null) {
                             OnlineTranslationSettingsRows(onlineTranslation, translationEngineActions)
                         }
                         SettingsSwitchRow(

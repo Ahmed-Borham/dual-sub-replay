@@ -22,14 +22,6 @@ val previewVersionCode = providers.gradleProperty("previewVersionCode").orNull?.
 val previewVersionNameSuffix = providers.gradleProperty("previewVersionNameSuffix").orNull.orEmpty()
 val previewApplicationIdSuffix = providers.gradleProperty("previewApplicationIdSuffix").orNull.orEmpty()
 
-// "full" (default) ships Google ML Kit translation; "fdroid" builds only free
-// software for F-Droid. Each variant adds its own src/<distribution>/java.
-val distribution = providers.gradleProperty("distribution").orNull ?: "full"
-if (distribution !in setOf("full", "fdroid")) {
-    throw GradleException("-Pdistribution must be full or fdroid, not $distribution.")
-}
-val isFdroidBuild = distribution == "fdroid"
-
 if (requireReleaseSigning && !hasReleaseSigning) {
     throw GradleException(
         "Release signing requires ANDROID_RELEASE_STORE_FILE, " +
@@ -60,70 +52,10 @@ val japaneseTestDictionary by tasks.registering(JapaneseTestDictionary::class) {
     output.set(layout.buildDirectory.dir("generated/japanese-test-dictionary"))
 }
 
-// The F-Droid build's licence screen shows the licence files of the native translation engine,
-// read from the submodules so they always match the compiled code. A missing file fails the build.
-val engineLicenses = listOf(
-    "Bergamot translator (mozilla/translations), MPL-2.0" to "translations/LICENSE",
-    "Marian NMT, MIT" to "translations/inference/marian-fork/LICENSE.md",
-    "ssplit-cpp, Apache-2.0" to "translations/inference/3rd_party/ssplit-cpp/LICENSE.md",
-    "PCRE2, BSD-3-Clause with the PCRE2 exception" to "pcre2/LICENCE",
-) + listOf(
-    "SentencePiece" to "sentencepiece/LICENSE",
-    "ruy" to "ruy/LICENSE",
-    "cpuinfo" to "ruy/third_party/cpuinfo/LICENSE",
-    "intgemm" to "intgemm/LICENSE",
-    "faiss" to "faiss/LICENSE",
-    "yaml-cpp" to "yaml-cpp/LICENSE",
-    "pathie-cpp" to "pathie-cpp/LICENSE",
-    "simd_utils" to "simd_utils/LICENSE",
-    "CLI11" to "CLI/LICENSE",
-    "spdlog" to "spdlog/LICENSE",
-    "phf" to "phf/LICENSE",
-    "cnpy" to "cnpy/LICENSE",
-    "mio" to "mio/LICENSE",
-    "zstr" to "zstr/LICENSE",
-    "zlib" to "zlib/README",
-).map { (name, path) -> "$name (bundled with Marian)" to "translations/inference/marian-fork/src/3rd_party/$path" }
-
-abstract class EngineLicenseNotice : DefaultTask() {
-    @get:Input
-    abstract val titles: ListProperty<String>
-
-    @get:InputFiles
-    @get:PathSensitive(PathSensitivity.RELATIVE)
-    abstract val licenseFiles: ConfigurableFileCollection
-
-    @get:OutputDirectory
-    abstract val output: DirectoryProperty
-
-    @TaskAction
-    fun write() {
-        val sections = titles.get().zip(licenseFiles.files.toList()) { title, file ->
-            "===== $title =====\n\n${file.readText().trim()}"
-        }
-        output.file("licenses/distribution.txt").get().asFile.apply {
-            parentFile.mkdirs()
-            writeText(
-                "TRANSLATION ENGINE\n\nThis build translates with Mozilla's Bergamot engine, built from source. " +
-                    "Its components and their licences follow.\n\n" + sections.joinToString("\n\n\n") + "\n",
-            )
-        }
-    }
-}
-
-val engineLicenseNotice by tasks.registering(EngineLicenseNotice::class) {
-    titles.set(engineLicenses.map { it.first })
-    licenseFiles.from(engineLicenses.map { "src/fdroid/cpp/${it.second}" })
-    output.set(layout.buildDirectory.dir("generated/engine-licenses"))
-}
-
 androidComponents {
     onVariants { variant ->
         variant.deviceTests.values.forEach { deviceTest ->
             deviceTest.sources.assets?.addGeneratedSourceDirectory(japaneseTestDictionary, JapaneseTestDictionary::output)
-        }
-        if (isFdroidBuild) {
-            variant.sources.assets?.addGeneratedSourceDirectory(engineLicenseNotice, EngineLicenseNotice::output)
         }
     }
 }
@@ -139,60 +71,7 @@ android {
         versionCode = previewVersionCode ?: appVersionCode
         versionName = appVersionName + previewVersionNameSuffix
 
-        // Safe Browsing sends URL checks to Google, so the F-Droid build turns it off.
-        val safeBrowsing = (!isFdroidBuild).toString()
-        buildConfigField("boolean", "WEBVIEW_SAFE_BROWSING", safeBrowsing)
-        manifestPlaceholders["webViewSafeBrowsing"] = safeBrowsing
-        // The opt-in Google Translate (online) engine sends subtitle text to Google; F-Droid never offers it.
-        buildConfigField("boolean", "ONLINE_TRANSLATION", (!isFdroidBuild).toString())
-        // The AI assistant sends questions to an AI service with the user's own key; F-Droid leaves it out.
-        buildConfigField("boolean", "AI_ASSISTANT", (!isFdroidBuild).toString())
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-    }
-
-    sourceSets {
-        getByName("main") {
-            kotlin.srcDir("src/$distribution/java")
-            assets.srcDir("src/$distribution/assets")
-        }
-        if (isFdroidBuild) {
-            // Device test for the native engine; CI fills the assets with
-            // tools/fetch_bergamot_test_models.py.
-            getByName("androidTest") {
-                kotlin.srcDir("src/fdroidAndroidTest/java")
-                assets.srcDir("build/fdroid-test-models")
-            }
-        }
-    }
-
-    if (isFdroidBuild) {
-        // F-Droid rejects the encrypted dependency blob AGP adds to the signing block.
-        dependenciesInfo {
-            includeInApk = false
-            includeInBundle = false
-        }
-
-        // Mozilla's Bergamot translator, built from the src/fdroid/cpp submodules.
-        ndkVersion = "28.2.13676358"
-        externalNativeBuild {
-            cmake {
-                path = file("src/fdroid/cpp/CMakeLists.txt")
-                version = "3.22.1"
-            }
-        }
-        defaultConfig {
-            ndk {
-                abiFilters += listOf("arm64-v8a", "x86_64")
-            }
-            externalNativeBuild {
-                cmake {
-                    // Marian is unusably slow unoptimised, so debug builds use Release too.
-                    arguments += listOf("-DCMAKE_BUILD_TYPE=Release", "-DANDROID_STL=c++_static")
-                    targets += "dualsub_bergamot"
-                }
-            }
-        }
     }
 
     buildFeatures {
@@ -300,9 +179,7 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
 
-    if (!isFdroidBuild) {
-        implementation("com.google.mlkit:translate:17.0.3")
-    }
+    implementation("com.google.mlkit:translate:17.0.3")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     // Japanese morphological analysis (MeCab IPADIC dictionary), Apache-2.0, pure Java.
     // The APK keeps only its code; the dictionary files are excluded from packaging below.

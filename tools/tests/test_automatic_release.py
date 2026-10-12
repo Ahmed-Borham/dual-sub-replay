@@ -194,8 +194,8 @@ class ReleaseTests(unittest.TestCase):
         jobs = workflow.split("\njobs:\n", 1)[1]
         self.assertEqual(release.REQUIRED_JOBS, set(re.findall(r"^  ([A-Za-z0-9_-]+):\s*$", jobs, re.MULTILINE)))
 
-    def test_failed_pending_or_missing_fdroid_job_blocks_release(self):
-        for name in ("fdroid-build", "fdroid-device-tests"):
+    def test_failed_pending_or_missing_required_job_blocks_release(self):
+        for name in sorted(release.REQUIRED_JOBS):
             for conclusion in ("failure", None, "missing"):
                 with self.subTest(job=name, conclusion=conclusion):
                     api = FakeGitHub()

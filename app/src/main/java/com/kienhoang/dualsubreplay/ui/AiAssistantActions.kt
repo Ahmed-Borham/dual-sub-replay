@@ -7,7 +7,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalContext
-import com.kienhoang.dualsubreplay.BuildConfig
 import com.kienhoang.dualsubreplay.R
 import com.kienhoang.dualsubreplay.assistant.AiAction
 import com.kienhoang.dualsubreplay.assistant.AiActionOutcome
@@ -143,14 +142,11 @@ internal fun aiSettingCurrentValue(
 internal fun aiActionRefusal(
     state: DualSubUiState,
     action: AiAction,
-    onlineTranslation: Boolean,
 ): String? =
     when {
         action is AiAction.Playback -> aiPlaybackRefusal(state, action.command)
         action is AiAction.ChangeSetting && action.setting == AiSetting.PLAYBACK_SPEED && state.activeVideoId == null ->
             "No video is open."
-        action is AiAction.ChangeTranslation && action.googleTranslate == true && !onlineTranslation ->
-            "This build only translates on the device."
         else -> null
     }
 
@@ -273,7 +269,7 @@ internal class AppAiActions(
         val needsPlayer =
             action is AiAction.Playback || (action is AiAction.ChangeSetting && action.setting == AiSetting.PLAYBACK_SPEED)
         if (needsPlayer && !player.bound) return "The video player is not ready."
-        return aiActionRefusal(state, action, BuildConfig.ONLINE_TRANSLATION)
+        return aiActionRefusal(state, action)
     }
 
     override fun describe(action: AiAction): AiActionText =

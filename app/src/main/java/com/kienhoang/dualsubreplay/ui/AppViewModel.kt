@@ -6,7 +6,6 @@ import android.os.SystemClock
 import androidx.annotation.StringRes
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.kienhoang.dualsubreplay.BuildConfig
 import com.kienhoang.dualsubreplay.R
 import com.kienhoang.dualsubreplay.data.AnalyzedToken
 import com.kienhoang.dualsubreplay.data.CaptionLanguage
@@ -33,13 +32,13 @@ import com.kienhoang.dualsubreplay.data.YouTubeCaptionProvider
 import com.kienhoang.dualsubreplay.data.YouTubeUrlParser
 import com.kienhoang.dualsubreplay.data.retireLegacyDownloadJobs
 import com.kienhoang.dualsubreplay.data.savedWordFrom
+import com.kienhoang.dualsubreplay.translation.DEFAULT_TRANSLATION_ENGINE
 import com.kienhoang.dualsubreplay.translation.GOOGLE_RECHECK_INTERVAL_MS
 import com.kienhoang.dualsubreplay.translation.GoogleWebTranslator
 import com.kienhoang.dualsubreplay.translation.OnDeviceTranslator
 import com.kienhoang.dualsubreplay.translation.TRANSLATION_ENGINE_PREFERENCE
 import com.kienhoang.dualsubreplay.translation.TranslationEngine
 import com.kienhoang.dualsubreplay.translation.TranslationLanguages
-import com.kienhoang.dualsubreplay.translation.defaultTranslationEngine
 import com.kienhoang.dualsubreplay.translation.storedTranslationEngine
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -113,8 +112,6 @@ data class DualSubUiState(
     /** Why translation stopped while the original captions keep playing, or null. */
     val translationError: String? = null,
     val translationEngine: TranslationEngine = TranslationEngine.ON_DEVICE,
-    /** False in the F-Droid build, which never offers the online engine. */
-    val onlineTranslationAvailable: Boolean = false,
     /**
      * Google failed, so this video translates on the device. The saved engine is unchanged: Google is
      * checked again every [GOOGLE_RECHECK_INTERVAL_MS] and tried again on the next load.
@@ -128,7 +125,7 @@ data class DualSubUiState(
 internal fun DualSubUiState.translatesWithGoogle(): Boolean = translationEngine == TranslationEngine.GOOGLE_WEB && !onDeviceFallback
 
 internal fun DualSubUiState.onlineTranslationSettings() =
-    OnlineTranslationSettings(onlineTranslationAvailable, translationEngine)
+    OnlineTranslationSettings(translationEngine)
 
 /**
  * A source-language choice is only rejected when the video's track list is
@@ -304,7 +301,6 @@ class AppViewModel internal constructor(
     private val translator =
         OnDeviceTranslator(
             cacheDirectory = File(application.cacheDir, "subtitle-translations"),
-            modelDirectory = File(application.filesDir, "translation-models"),
         )
     private val googleTranslator = GoogleWebTranslator(cacheDirectory = File(application.cacheDir, "google-translations"))
 
@@ -467,12 +463,7 @@ class AppViewModel internal constructor(
                     storedFeatureEnabled(
                         preferences.getBoolean(TAP_TO_LEARN_PREFERENCE, true),
                     ),
-                translationEngine =
-                    storedTranslationEngine(
-                        preferences.getString(TRANSLATION_ENGINE_PREFERENCE, null),
-                        BuildConfig.ONLINE_TRANSLATION,
-                    ),
-                onlineTranslationAvailable = BuildConfig.ONLINE_TRANSLATION,
+                translationEngine = storedTranslationEngine(preferences.getString(TRANSLATION_ENGINE_PREFERENCE, null)),
             ),
         )
     val state: StateFlow<DualSubUiState> = _state.asStateFlow()
@@ -1053,10 +1044,9 @@ class AppViewModel internal constructor(
 
     /** Settings → Translation → Google Translate (online). Reloads the current video's translations. */
     fun setTranslationEngine(engine: TranslationEngine) {
-        val chosen = storedTranslationEngine(engine.storageValue, BuildConfig.ONLINE_TRANSLATION)
-        preferences.edit().putString(TRANSLATION_ENGINE_PREFERENCE, chosen.storageValue).apply()
-        val changed = _state.value.translationEngine != chosen || _state.value.onDeviceFallback
-        _state.update { it.copy(translationEngine = chosen) }
+        preferences.edit().putString(TRANSLATION_ENGINE_PREFERENCE, engine.storageValue).apply()
+        val changed = _state.value.translationEngine != engine || _state.value.onDeviceFallback
+        _state.update { it.copy(translationEngine = engine) }
         val videoId = _state.value.activeVideoId
         if (changed && videoId != null) loadVideo(videoId = videoId, showPanel = _state.value.subtitlePanelVisible)
     }
@@ -1133,7 +1123,7 @@ class AppViewModel internal constructor(
                 wordLearningActiveOnly = true,
                 tapToLearnEnabled = true,
                 selectedLearningWord = null,
-                translationEngine = defaultTranslationEngine(BuildConfig.ONLINE_TRANSLATION),
+                translationEngine = DEFAULT_TRANSLATION_ENGINE,
                 onDeviceFallback = false,
                 onlineTranslationFailureDetail = null,
             )

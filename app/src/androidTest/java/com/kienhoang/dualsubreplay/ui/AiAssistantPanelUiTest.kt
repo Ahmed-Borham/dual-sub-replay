@@ -160,7 +160,7 @@ class AiAssistantPanelUiTest {
             onDeviceFallback = true,
             onlineTranslationFailureDetail = "Google Translate refused the request (HTTP 429).",
         )
-    private val snapshot = AiAppSnapshot("1.0", "GitHub", "English", "Japanese", "English", "on the device", emptyList())
+    private val snapshot = AiAppSnapshot("1.0", "English", "Japanese", "English", "on the device", emptyList())
 
     @After
     fun tearDown() = scope.cancel()

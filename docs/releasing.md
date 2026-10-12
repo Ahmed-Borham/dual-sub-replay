@@ -7,11 +7,11 @@ follow [Preparing PRs for owner merge](../AGENTS.md#preparing-prs-for-owner-merg
 
 ## Continuous integration
 
-Pull requests use the committed wrapper to run formatting and complexity checks, unit tests, lint, debug and Android-test APK assembly, and an optimized release build. A second job executes the offline fixture suite on the API 36 managed device. Both jobs must pass before merging into `main`. Same-repository pull requests also publish a numbered test APK to the rolling preview release and remove it automatically when the PR is closed.
+Pull requests use the committed wrapper to run formatting and complexity checks, unit tests, lint, debug and Android-test APK assembly, and an optimized release build. A second job executes the offline fixture suite on the API 36 managed device at the same time. Both jobs must pass before merging into `main`. The same checks also run after every push to `main`, so the Gradle cache that pull requests restore stays current. Same-repository pull requests also publish a numbered test APK to the rolling preview release and remove it automatically when the PR is closed.
 
 ## Automatic official releases
 
-When **hoangkien1703 merges a PR into `main`**, the **Release merged PR** workflow checks that the latest Android CI run for the PR's final commit succeeded, including all four jobs: `verify-build`, `managed-device-tests`, `fdroid-build` and `fdroid-device-tests`. It then builds the preview and a production-signed official APK. Direct pushes and merges by other accounts do not publish releases.
+When **hoangkien1703 merges a PR into `main`**, the **Release merged PR** workflow checks that the latest Android CI run for the PR's final commit succeeded, including both jobs: `verify-build` and `managed-device-tests`. It then builds the preview and a production-signed official APK. Direct pushes and merges by other accounts do not publish releases.
 
 By default, each eligible merge increments the highest existing or reserved stable patch version: `1.0.4 → 1.0.5` (and `1.0.9 → 1.0.10`). It also increments Android's internal `versionCode` above all prior stable releases and reservations. Preview tags do not affect official version selection. **Do not manually bump the Gradle constants in feature PRs.**
 

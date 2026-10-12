@@ -34,10 +34,7 @@ import com.kienhoang.dualsubreplay.assistant.aiSubtitleLineContext
 import com.kienhoang.dualsubreplay.translation.TranslationLanguages
 import com.kienhoang.dualsubreplay.ui.theme.DualSubTheme
 
-/**
- * The assistant, the page video's controls it may use, and the bundled app guide it reads. Null in
- * the F-Droid build, which has no assistant.
- */
+/** The assistant, the page video's controls it may use, and the bundled app guide it reads. */
 internal class AiAssistantHost(
     val controller: AiAssistantController,
     val player: AiPlayerControls = AiPlayerControls(),

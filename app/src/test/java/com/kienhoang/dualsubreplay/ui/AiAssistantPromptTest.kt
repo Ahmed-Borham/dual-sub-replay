@@ -67,14 +67,13 @@ class AiAssistantPromptTest {
                 resolvedSourceLanguage = "ja",
                 targetLanguage = "en",
                 fontScale = 1.25f,
-                onlineTranslationAvailable = true,
                 translationEngine = TranslationEngine.GOOGLE_WEB,
             )
         val snapshot = aiAppSnapshot(state, PlayerExperienceMode.TRANSCRIPT_PANEL, Locale.forLanguageTag("vi"), "1.4.2")
         val prompt = aiSystemPrompt(guide, snapshot)
         assertTrue(prompt.startsWith(guide.trim()))
         assertTrue("Reply language: Vietnamese" in prompt)
-        assertTrue("- Version: 1.4.2 (GitHub build)" in prompt)
+        assertTrue("- Version: 1.4.2\n" in prompt)
         assertTrue("- Learning: Japanese subtitles, translated to English" in prompt)
         assertTrue("- Translation: Google Translate (online)" in prompt)
         assertTrue("- Text size: 125%" in prompt)
