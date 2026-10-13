@@ -297,7 +297,24 @@ internal fun webLiveCaptionConfigurationScript(enabled: Boolean): String {
             }
           };
 
-          state.observer = new MutationObserver(function() { state.recordCaption(); });
+          // YouTube rewrites its time display, feed and comments all the time; only caption
+          // changes need a reading. Anything missed here is still read by the next snapshot poll.
+          state.captionSelector = '.ytp-caption-segment, .ytp-caption-window-container, .caption-window';
+          state.touchesCaptions = function(records) {
+            const related = function(node) {
+              return !!node && node.nodeType === 1 &&
+                (node.matches(state.captionSelector) || !!node.querySelector(state.captionSelector));
+            };
+            return records.some(function(record) {
+              const target = record.target.nodeType === 1 ? record.target : record.target.parentElement;
+              return (!!target && !!target.closest(state.captionSelector)) ||
+                Array.prototype.some.call(record.addedNodes, related) ||
+                Array.prototype.some.call(record.removedNodes, related);
+            });
+          };
+          state.observer = new MutationObserver(function(records) {
+            if (state.touchesCaptions(records)) state.recordCaption();
+          });
           state.observer.observe(document.documentElement, {
             childList: true,
             subtree: true,
