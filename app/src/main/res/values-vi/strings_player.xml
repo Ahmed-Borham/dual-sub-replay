@@ -31,4 +31,8 @@
     <string name="player_webview_renderer_crashed_reload">Trình kết xuất Android WebView đã gặp sự cố. Chạm vào Tải lại để tạo lại.</string>
     <string name="player_webview_renderer_reclaimed_reload">Android đã dừng trình kết xuất WebView để giải phóng bộ nhớ. Chạm vào Tải lại để tạo lại.</string>
     <string name="player_reload">Tải lại</string>
+    <string name="playback_notification_channel">Phát video</string>
+    <string name="playback_notification_channel_description">Phát và tạm dừng video từ tai nghe, màn hình khóa và thông báo này.</string>
+    <string name="playback_play">Phát</string>
+    <string name="playback_pause">Tạm dừng</string>
 </resources>

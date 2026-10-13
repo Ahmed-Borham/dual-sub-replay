@@ -31,4 +31,8 @@
     <string name="player_webview_renderer_crashed_reload">O renderizador do Android WebView travou. Toque em Recarregar para recriá-lo.</string>
     <string name="player_webview_renderer_reclaimed_reload">O Android parou o renderizador do WebView para liberar memória. Toque em Recarregar para recriá-lo.</string>
     <string name="player_reload">Recarregar</string>
+    <string name="playback_notification_channel">Reprodução de vídeo</string>
+    <string name="playback_notification_channel_description">Reproduza e pause o vídeo pelos fones de ouvido, pela tela de bloqueio e por esta notificação.</string>
+    <string name="playback_play">Reproduzir</string>
+    <string name="playback_pause">Pausar</string>
 </resources>

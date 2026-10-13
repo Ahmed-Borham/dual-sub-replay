@@ -13,6 +13,7 @@ version snapshot here drifts, and update relevant documentation with lasting cha
 | UI | Jetpack Compose / Material 3; Compose BOM 2026.06.01 | [App dependencies](../../app/build.gradle.kts) |
 | Translation/network | ML Kit Translate 17.0.3, OkHttp, Kotlin coroutines | [App dependencies](../../app/build.gradle.kts) |
 | Japanese words | Kuromoji 0.9.0 (Apache-2.0, pure Java); its 13 MB IPADIC dictionary downloads on first Japanese use | [App dependencies](../../app/build.gradle.kts), [spec](../specs/2026-09-29-word-audio-jump-back-japanese-words.md) |
+| Media controls | `androidx.media` 1.7.1 media session and notification (no player library) | [App dependencies](../../app/build.gradle.kts) |
 | Tests | JUnit4 4.13.2; Compose/Android instrumentation, API 36 AOSP x86_64 managed Pixel 2 | [App test configuration](../../app/build.gradle.kts) |
 | Performance | Separate test-only `:benchmark` module, Macrobenchmark and app Baseline Profile | [Benchmark build](../../benchmark/build.gradle.kts), [methodology](../quality-and-performance.md) |
 | Website | Static English/Vietnamese landing page in `site/`, published to GitHub Pages from `main`; offline checks in `tools/tests/test_site.py` | [Pages workflow](../../.github/workflows/pages.yml), [discoverability](../promotion/discoverability.md) |
@@ -29,6 +30,14 @@ Paths below are relative to
   `ui/YouTubeWebScripts.kt` reads/seeks the page's native video and captures eligible
   live caption data. Caption clock, snapshot gating, and presentation helpers keep
   playback observations separate from UI rendering.
+- `playback/WebVideoPlaybackService.kt` is a `mediaPlayback` foreground service that owns the
+  media session (earphone and headset buttons, lock screen) and the media notification for the
+  page video. It is a remote control, not a player: `playback/WebVideoPlayback.kt`'s
+  `WebVideoBridge` carries the state `SingleYouTubePage` polls once a second (also off screen) and
+  sends play/pause/seek back as page scripts. A playing video is not paused when the app leaves
+  the screen, and `WEB_KEEP_PLAYING_WHEN_HIDDEN_SCRIPT` always tells YouTube's page it is visible
+  so it keeps playing without Premium too (owner decision 2026-10-13). See the
+  [spec](../specs/2026-10-13-background-play-and-earphone-controls.md).
 - `data/CaptionProvider.kt` is the provider interface. `YouTubeCaptionProvider.kt`
   discovers caption tracks from watch-page player metadata and undocumented
   Innertube player fallbacks, then fetches timed text. `CaptionDocumentParser.kt`
