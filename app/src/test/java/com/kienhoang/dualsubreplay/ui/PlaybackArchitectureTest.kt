@@ -189,6 +189,8 @@ class PlaybackArchitectureTest {
         assertTrue(enabled.contains("window.location.protocol !== 'https:'"))
         assertTrue(enabled.contains("currentHost.endsWith('.youtube.com')"))
         assertTrue(enabled.contains("new MutationObserver"))
+        // Only caption changes are read right away; the rest of YouTube's page churn waits for the poll.
+        assertTrue(enabled.contains("if (state.touchesCaptions(records)) state.recordCaption();"))
         assertTrue(enabled.contains(".ytmClosedCaptioningButtonButton"))
         assertTrue(enabled.contains("ytInitialPlayerResponse"))
         assertTrue(enabled.contains("player.loadModule('captions')"))

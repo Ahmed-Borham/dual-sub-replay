@@ -3,6 +3,9 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Keeps a playing video's earphone controls and notification alive with the screen off. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <queries>
         <intent><action android:name="android.intent.action.TTS_SERVICE" /></intent>
     </queries>
@@ -58,5 +61,10 @@
                 <data android:scheme="https" android:host="youtube.com" />
             </intent-filter>
         </activity>
+
+        <service
+            android:name=".playback.WebVideoPlaybackService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
     </application>
 </manifest>

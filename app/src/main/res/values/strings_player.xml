@@ -31,4 +31,8 @@
     <string name="player_webview_renderer_crashed_reload">The Android WebView renderer crashed. Tap Reload to recreate it.</string>
     <string name="player_webview_renderer_reclaimed_reload">Android stopped the WebView renderer to reclaim memory. Tap Reload to recreate it.</string>
     <string name="player_reload">Reload</string>
+    <string name="playback_notification_channel">Video playback</string>
+    <string name="playback_notification_channel_description">Play and pause the video from earphones, the lock screen and this notification.</string>
+    <string name="playback_play">Play</string>
+    <string name="playback_pause">Pause</string>
 </resources>

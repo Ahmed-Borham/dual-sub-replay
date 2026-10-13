@@ -53,9 +53,20 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.webkit.WebViewCompat
+import androidx.webkit.WebViewFeature
 import com.kienhoang.dualsubreplay.BuildConfig
 import com.kienhoang.dualsubreplay.R
 import com.kienhoang.dualsubreplay.data.YouTubeUrlParser
+import com.kienhoang.dualsubreplay.playback.WEB_KEEP_PLAYING_WHEN_HIDDEN_SCRIPT
+import com.kienhoang.dualsubreplay.playback.WEB_VIDEO_STATE_SCRIPT
+import com.kienhoang.dualsubreplay.playback.YOUTUBE_DOCUMENT_START_ORIGINS
+import com.kienhoang.dualsubreplay.playback.WebVideoBridge
+import com.kienhoang.dualsubreplay.playback.WebVideoCommand
+import com.kienhoang.dualsubreplay.playback.WebVideoPlaybackService
+import com.kienhoang.dualsubreplay.playback.isPlaying
+import com.kienhoang.dualsubreplay.playback.parseWebVideoPlayback
+import com.kienhoang.dualsubreplay.playback.webVideoCommandScript
 import java.net.URI
 import java.util.Collections
 import java.util.WeakHashMap
@@ -72,6 +83,10 @@ private const val BROWSER_LOG_TAG = "DualSubBrowser"
 // second; 100 ms keeps the highlight responsive without polling every frame.
 private const val PLAYBACK_POLL_INTERVAL_MS = 100L
 private const val SIGN_IN_POLL_INTERVAL_MS = 500L
+
+// Earphone buttons and the media notification need the video's state also off screen.
+private const val MEDIA_STATE_POLL_INTERVAL_MS = 1_000L
+private val OFF_SCREEN_REPEAT_DELAYS_MS = listOf(300L, 1_500L)
 private val destroyedWebViews = Collections.newSetFromMap(WeakHashMap<WebView, Boolean>())
 private val trustedGoogleSignInHosts = setOf(
     "accounts.google.com",
@@ -328,7 +343,7 @@ internal fun SingleYouTubePage(
         }
 
         WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG)
-        WebView(context).apply {
+        OffScreenPlaybackWebView(context) { WebVideoBridge.playback.value.isPlaying() }.apply {
             layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -365,6 +380,13 @@ internal fun SingleYouTubePage(
             }
             CookieManager.getInstance().setAcceptCookie(true)
             CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
+            if (WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
+                WebViewCompat.addDocumentStartJavaScript(
+                    this,
+                    WEB_KEEP_PLAYING_WHEN_HIDDEN_SCRIPT,
+                    YOUTUBE_DOCUMENT_START_ORIGINS,
+                )
+            }
 
             webViewClient = object : WebViewClient() {
                 private fun handleMainFrameUrl(view: WebView, url: String): Boolean {
@@ -440,6 +462,7 @@ internal fun SingleYouTubePage(
                     reportNavigation(view, url)
                     if (url?.let(::isYouTubeWebUrl) == true) {
                         CookieManager.getInstance().flush()
+                        view.evaluateJavascript(WEB_KEEP_PLAYING_WHEN_HIDDEN_SCRIPT, null)
                         view.evaluateJavascript(webCaptionTrackSyncScript(currentCaptionTrackTarget), null)
                         view.evaluateJavascript(
                             webLiveCaptionConfigurationScript(currentLiveCaptionCaptureEnabled),
@@ -624,10 +647,63 @@ internal fun SingleYouTubePage(
         onDispose { controller.unbind(token) }
     }
 
+    fun refreshMediaState() {
+        if (!webView.url.orEmpty().let(::isYouTubeWebUrl)) {
+            WebVideoBridge.publish(null)
+            return
+        }
+        webView.evaluateJavascript(WEB_VIDEO_STATE_SCRIPT) { rawValue ->
+            // A late answer from a WebView that is gone must not bring its video back.
+            if (synchronized(destroyedWebViews) { webView in destroyedWebViews }) return@evaluateJavascript
+            val currentVideoId = browseVideoSelection(webView.url.orEmpty())?.videoId
+            val playback = parseWebVideoPlayback(rawValue)?.takeIf { it.videoId == currentVideoId }
+            WebVideoBridge.publish(playback)
+            if (playback.isPlaying()) WebVideoPlaybackService.startIfNeeded(context)
+        }
+    }
+
+    LaunchedEffect(webView) {
+        while (isActive) {
+            refreshMediaState()
+            delay(MEDIA_STATE_POLL_INTERVAL_MS)
+        }
+    }
+
+    // WebView pauses a hidden page's video and resumes it once the page is shown again. Off
+    // screen, tell WebView (and the full-screen view, which has its own window) it is visible.
+    fun keepPageShownOffScreen() {
+        webView.onResume()
+        webView.dispatchWindowVisibilityChanged(View.VISIBLE)
+        fullscreenSession?.view?.dispatchWindowVisibilityChanged(View.VISIBLE)
+    }
+
+    DisposableEffect(webView) {
+        fun runCommand(command: WebVideoCommand) {
+            if (command == WebVideoCommand.Pause) controller.pause()
+            if (command == WebVideoCommand.Play && !lifecycleStarted) keepPageShownOffScreen()
+            if (webView.url.orEmpty().let(::isYouTubeWebUrl)) {
+                webView.evaluateJavascript(webVideoCommandScript(command)) { refreshMediaState() }
+            }
+        }
+        val token = WebVideoBridge.bindCommands(::runCommand)
+        onDispose { WebVideoBridge.unbindCommands(token) }
+    }
+
     DisposableEffect(lifecycleOwner, webView) {
         val observer = LifecycleEventObserver { _, _ ->
             lifecycleStarted = lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
-            if (lifecycleStarted) webView.onResume() else { controller.pause(); webView.onPause() }
+            when {
+                lifecycleStarted -> webView.onResume()
+                // A playing video keeps playing with the screen off. Android may hide the window
+                // just after this, so say it again once that has happened.
+                WebVideoBridge.playback.value.isPlaying() -> {
+                    keepPageShownOffScreen()
+                    OFF_SCREEN_REPEAT_DELAYS_MS.forEach { delayMs ->
+                        webView.postDelayed({ if (!lifecycleStarted) keepPageShownOffScreen() }, delayMs)
+                    }
+                }
+                else -> { controller.pause(); webView.onPause() }
+            }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         if (lifecycleStarted) webView.onResume() else webView.onPause()

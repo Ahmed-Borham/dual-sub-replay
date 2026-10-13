@@ -31,4 +31,8 @@
     <string name="player_webview_renderer_crashed_reload">El renderizador de Android WebView falló. Toca Recargar para volver a crearlo.</string>
     <string name="player_webview_renderer_reclaimed_reload">Android detuvo el renderizador de WebView para liberar memoria. Toca Recargar para volver a crearlo.</string>
     <string name="player_reload">Recargar</string>
+    <string name="playback_notification_channel">Reproducción de video</string>
+    <string name="playback_notification_channel_description">Reproduce y pausa el video desde los auriculares, la pantalla de bloqueo y esta notificación.</string>
+    <string name="playback_play">Reproducir</string>
+    <string name="playback_pause">Pausar</string>
 </resources>
