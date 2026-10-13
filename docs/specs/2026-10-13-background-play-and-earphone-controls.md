@@ -119,7 +119,9 @@ owner chose "Everyone" on 2026-10-13. This does not authorize merging or publish
 As planned, plus the owner's "Everyone" choice (step 4). `androidx.media:media` 1.7.1 is the
 only new dependency. Notifications go through one helper with `@SuppressLint("NotificationPermission")`
 because Android exempts media-session notifications from the notification permission; the app
-asks for no new permission at runtime.
+asks for no new permission at runtime. CI's APK check (`tools/report_apk.py`) forbade every
+foreground service; it now allows only `FOREGROUND_SERVICE` with the `MEDIA_PLAYBACK` type and still
+fails on any other foreground service type (`tools/tests/test_report_apk.py`).
 
 ## Validation result
 

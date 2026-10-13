@@ -18,12 +18,26 @@ FORBIDDEN_PERMISSIONS = {
     "android.permission.MANAGE_EXTERNAL_STORAGE",
     "android.permission.SYSTEM_ALERT_WINDOW",
     "android.permission.REQUEST_INSTALL_PACKAGES",
-    "android.permission.FOREGROUND_SERVICE",
     "android.permission.FOREGROUND_SERVICE_DATA_SYNC",
     "android.permission.POST_NOTIFICATIONS",
     "android.permission.WAKE_LOCK",
     "android.permission.RECEIVE_BOOT_COMPLETED",
 }
+
+# The only foreground service is the media session for the page video (screen-off playback and
+# earphone controls, owner decision 2026-10-13). Every other foreground service type stays out,
+# so downloading or syncing in the background cannot come back unnoticed.
+ALLOWED_FOREGROUND_SERVICE_TYPES = {"android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"}
+
+
+def is_forbidden_permission(permission: str) -> bool:
+    if permission in FORBIDDEN_PERMISSIONS:
+        return True
+    return (
+        permission.startswith("android.permission.FOREGROUND_SERVICE_")
+        and permission not in ALLOWED_FOREGROUND_SERVICE_TYPES
+    )
+
 
 FORBIDDEN_PATH_SUBSTRINGS = [
     "libffmpeg",
@@ -141,7 +155,7 @@ def inspect_apk(apk_path: str, max_bytes: int, stretch_bytes: int):
     largest_entries.sort(key=lambda x: x[1], reverse=True)
     top_10 = largest_entries[:10]
 
-    forbidden_perms_found = [p for p in permissions if p in FORBIDDEN_PERMISSIONS]
+    forbidden_perms_found = [p for p in permissions if is_forbidden_permission(p)]
 
     report = {
         "apk_path": apk_path,
