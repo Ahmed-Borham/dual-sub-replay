@@ -123,6 +123,14 @@ asks for no new permission at runtime. CI's APK check (`tools/report_apk.py`) fo
 foreground service; it now allows only `FOREGROUND_SERVICE` with the `MEDIA_PLAYBACK` type and still
 fails on any other foreground service type (`tools/tests/test_report_apk.py`).
 
+Follow-up after the owner's first phone test (2026-10-13, build401): the video still stopped with
+the screen off, after Home and in another app. Cause: Android's WebView (Chromium) pauses a page's
+video itself when its window is hidden; WebView keeps background media suspension on. Fix:
+`ui/OffScreenPlaybackWebView.kt` reports its window as visible to WebView while a video plays
+(`windowVisibilityForPage`, `OffScreenPlaybackWebViewTest`). On leaving the screen while playing,
+and before an off-screen Play command, the page and the full-screen video view (which has its own
+window) are told again that they are visible, which also resumes a video WebView paused while hidden.
+
 ## Validation result
 
 - Passed in the cloud container (2026-10-13): `formatCheck complexityCheck testDebugUnitTest

@@ -86,6 +86,7 @@ private const val SIGN_IN_POLL_INTERVAL_MS = 500L
 
 // Earphone buttons and the media notification need the video's state also off screen.
 private const val MEDIA_STATE_POLL_INTERVAL_MS = 1_000L
+private val OFF_SCREEN_REPEAT_DELAYS_MS = listOf(300L, 1_500L)
 private val destroyedWebViews = Collections.newSetFromMap(WeakHashMap<WebView, Boolean>())
 private val trustedGoogleSignInHosts = setOf(
     "accounts.google.com",
@@ -342,7 +343,7 @@ internal fun SingleYouTubePage(
         }
 
         WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG)
-        WebView(context).apply {
+        OffScreenPlaybackWebView(context) { WebVideoBridge.playback.value.isPlaying() }.apply {
             layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -668,9 +669,18 @@ internal fun SingleYouTubePage(
         }
     }
 
+    // WebView pauses a hidden page's video and resumes it once the page is shown again. Off
+    // screen, tell WebView (and the full-screen view, which has its own window) it is visible.
+    fun keepPageShownOffScreen() {
+        webView.onResume()
+        webView.dispatchWindowVisibilityChanged(View.VISIBLE)
+        fullscreenSession?.view?.dispatchWindowVisibilityChanged(View.VISIBLE)
+    }
+
     DisposableEffect(webView) {
         fun runCommand(command: WebVideoCommand) {
             if (command == WebVideoCommand.Pause) controller.pause()
+            if (command == WebVideoCommand.Play && !lifecycleStarted) keepPageShownOffScreen()
             if (webView.url.orEmpty().let(::isYouTubeWebUrl)) {
                 webView.evaluateJavascript(webVideoCommandScript(command)) { refreshMediaState() }
             }
@@ -684,8 +694,14 @@ internal fun SingleYouTubePage(
             lifecycleStarted = lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
             when {
                 lifecycleStarted -> webView.onResume()
-                // A playing video keeps playing with the screen off.
-                WebVideoBridge.playback.value.isPlaying() -> Unit
+                // A playing video keeps playing with the screen off. Android may hide the window
+                // just after this, so say it again once that has happened.
+                WebVideoBridge.playback.value.isPlaying() -> {
+                    keepPageShownOffScreen()
+                    OFF_SCREEN_REPEAT_DELAYS_MS.forEach { delayMs ->
+                        webView.postDelayed({ if (!lifecycleStarted) keepPageShownOffScreen() }, delayMs)
+                    }
+                }
                 else -> { controller.pause(); webView.onPause() }
             }
         }
