@@ -516,6 +516,8 @@ internal fun SubtitleSettingsDialog(
 
                     Section(MoreSettingsSection.OVERLAY, Icons.Default.Fullscreen) {
                         OverlaySettings(lockOverlayToVideo, onLockOverlayToVideoChange)
+                        SettingsSectionDivider()
+                        LearningControlsSettings()
                     }
 
                     Section(MoreSettingsSection.TRANSLATION, Icons.Default.Translate) {

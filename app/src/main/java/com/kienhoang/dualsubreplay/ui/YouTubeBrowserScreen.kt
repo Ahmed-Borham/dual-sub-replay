@@ -219,8 +219,21 @@ internal class YouTubeWebController {
     private var scriptAction: ((String) -> Unit)? = null
     private var pendingClip: com.kienhoang.dualsubreplay.data.SavedWord? = null
     private var playingClipVideo: String? = null
+    private var learningScript: String? = null
 
-    fun bindScripts(action: (String) -> Unit) { scriptAction = action }
+    fun bindScripts(action: (String) -> Unit) {
+        scriptAction = action
+        learningScript?.let(action)
+    }
+
+    /** Remembers the learning-controls script so every new page gets it again. */
+    fun configureLearning(script: String) {
+        learningScript = script
+        scriptAction?.invoke(script)
+    }
+
+    fun learningScriptOrNull(): String? = learningScript
+
     fun pause() {
         pendingClip = null
         playingClipVideo = null
@@ -472,6 +485,7 @@ internal fun SingleYouTubePage(
                             webCaptionVisibilityScript(currentSuppressPageCaptions),
                             null,
                         )
+                        controller.learningScriptOrNull()?.let { script -> view.evaluateJavascript(script, null) }
                     }
                 }
 
