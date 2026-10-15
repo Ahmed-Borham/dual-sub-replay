@@ -73,8 +73,7 @@ internal fun LearningControlsSettings() {
     SettingsSubheading("Learning controls")
     SettingsSwitchRow(
         title = "Auto pause",
-        description = "Pause at the end of each subtitle line. Play repeats the same line; " +
-            "swipe or tap a line to move on.",
+        description = "Pause at the end of each line. Play repeats it; swipe to move on.",
         checked = autoPause,
         onCheckedChange = { preferences.edit().putBoolean(AUTO_PAUSE_PREFERENCE, it).apply() },
         testTag = "learning_auto_pause_switch",
@@ -88,7 +87,7 @@ internal fun LearningControlsSettings() {
     )
     SettingsSwitchRow(
         title = "Swipe video to change line",
-        description = "Swipe right for the previous line, left for the next. The line plays at once.",
+        description = "Swipe right for the previous line, left for the next one.",
         checked = swipeLines,
         onCheckedChange = { preferences.edit().putBoolean(SWIPE_LINES_PREFERENCE, it).apply() },
         testTag = "learning_swipe_lines_switch",
@@ -111,18 +110,23 @@ internal fun webLearningControlsScript(
     val lines = StringBuilder("[")
     segments.forEachIndexed { index, segment ->
         if (index > 0) lines.append(',')
-        lines.append('[')
-            .append(segment.startMs / 1000.0)
-            .append(',')
-            .append(learningPauseMs(segment) / 1000.0)
-            .append(']')
+        val startSeconds = segment.startMs / 1000.0
+        val pauseSeconds = learningPauseMs(segment) / 1000.0
+        lines.append("[$startSeconds,$pauseSeconds]")
     }
     lines.append(']')
-    return LEARNING_CONTROLS_SCRIPT
-        .replace("__SEGMENTS__", lines.toString())
-        .replace("__AUTO__", autoPause.toString())
-        .replace("__TAP__", tapPlayPause.toString())
-        .replace("__SWIPE__", swipeLines.toString())
+    val values =
+        mapOf(
+            "__SEGMENTS__" to lines.toString(),
+            "__AUTO__" to autoPause.toString(),
+            "__TAP__" to tapPlayPause.toString(),
+            "__SWIPE__" to swipeLines.toString(),
+        )
+    var script = LEARNING_CONTROLS_SCRIPT
+    for ((placeholder, value) in values) {
+        script = script.replace(placeholder, value)
+    }
+    return script
 }
 
 /**
@@ -184,11 +188,6 @@ private val LEARNING_CONTROLS_SCRIPT: String =
       S.lastT = video.currentTime;
       startPlaying(video);
     }
-    function togglePlay() {
-      var video = pageVideo();
-      if (!video) return;
-      if (video.paused) startPlaying(video); else video.pause();
-    }
     function tick() {
       if (!S.segs.length) return;
       var video = pageVideo();
@@ -209,13 +208,27 @@ private val LEARNING_CONTROLS_SCRIPT: String =
         S.lastT = video.currentTime;
       }
     }
-    var CONTROL = '.ytp-chrome-bottom,.ytp-chrome-top,.ytp-popup,.ytp-settings-menu,.ytp-ce-element,' +
-      '.ytp-ad-module,button,a,input,select,textarea,[role="button"],[role="slider"],[role="dialog"]';
-    function insidePlayer(element) {
-      return !!element && !!element.closest && !!element.closest('.html5-video-player');
-    }
-    function onControl(element) {
-      return !!element && !!element.closest && !!element.closest(CONTROL);
+    // Controls that must keep their own behaviour. Big overlays that happen to be buttons still count as video.
+    var STRICT = '.ytp-chrome-bottom,.ytp-chrome-top,.ytp-popup,.ytp-settings-menu,.ytp-ce-element,' +
+      '[role="dialog"],[role="slider"]';
+    var SMALL = 'button,a,input,select,textarea,[role="button"]';
+    function areaOf(box) { return box.width * box.height; }
+    // The video, if a touch began on its picture (not on a control, the top strip or the seek bar area).
+    function videoUnderTouch(start) {
+      var video = pageVideo();
+      if (!video || !video.getBoundingClientRect) return null;
+      var box = video.getBoundingClientRect();
+      if (box.width < 50 || box.height < 50) return null;
+      if (start.x < box.left || start.x > box.right || start.y < box.top || start.y > box.bottom) return null;
+      var fraction = (start.y - box.top) / box.height;
+      if (fraction < 0.08 || fraction > 0.82) return null;
+      var element = start.target;
+      if (element && element.closest) {
+        if (element.closest(STRICT)) return null;
+        var small = element.closest(SMALL);
+        if (small && areaOf(small.getBoundingClientRect()) < areaOf(box) * 0.35) return null;
+      }
+      return video;
     }
     var touch = null;
     document.addEventListener('touchstart', function(event) {
@@ -227,9 +240,10 @@ private val LEARNING_CONTROLS_SCRIPT: String =
       var start = touch;
       touch = null;
       if (!start || !(S.tap || S.swipe)) return;
-      if (!insidePlayer(start.target) || onControl(start.target)) return;
       var point = event.changedTouches && event.changedTouches[0];
       if (!point) return;
+      var video = videoUnderTouch(start);
+      if (!video) return;
       var dx = point.clientX - start.x;
       var dy = point.clientY - start.y;
       var elapsed = Date.now() - start.at;
@@ -237,7 +251,15 @@ private val LEARNING_CONTROLS_SCRIPT: String =
         goToLine(dx > 0 ? -1 : 1);
         return;
       }
-      if (S.tap && elapsed < 400 && Math.abs(dx) < 12 && Math.abs(dy) < 12) togglePlay();
+      if (S.tap && elapsed < 400 && Math.abs(dx) < 12 && Math.abs(dy) < 12) {
+        // YouTube may already have toggled playback for this tap; only toggle if nothing changed.
+        var wasPaused = video.paused;
+        setTimeout(function() {
+          if (video.paused === wasPaused) {
+            if (video.paused) startPlaying(video); else video.pause();
+          }
+        }, 160);
+      }
     }, true);
     S.tick = tick;
     S.go = goToLine;
