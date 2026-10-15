@@ -213,20 +213,39 @@ private val LEARNING_CONTROLS_SCRIPT: String =
       '[role="dialog"],[role="slider"]';
     var SMALL = 'button,a,input,select,textarea,[role="button"]';
     function areaOf(box) { return box.width * box.height; }
-    // The video, if a touch began on its picture (not on a control, the top strip or the seek bar area).
+    function contains(box, x, y) { return x >= box.left && x <= box.right && y >= box.top && y <= box.bottom; }
+    // In full screen the player fills the screen and the picture sits inside black bars; touches on the bars count too.
+    function fullscreenBox() {
+      var element = document.fullscreenElement || document.webkitFullscreenElement ||
+        document.querySelector('.html5-video-player.ytp-fullscreen');
+      if (element && element.getBoundingClientRect) return element.getBoundingClientRect();
+      var player = document.querySelector('.html5-video-player');
+      if (player) {
+        var box = player.getBoundingClientRect();
+        if (box.width >= window.innerWidth * 0.9 && box.height >= window.innerHeight * 0.85) return box;
+      }
+      return null;
+    }
+    // The video, if a touch began on its picture or (in full screen) on the black bars around it,
+    // and not on a control, the top strip or the seek bar area of the picture.
     function videoUnderTouch(start) {
       var video = pageVideo();
       if (!video || !video.getBoundingClientRect) return null;
-      var box = video.getBoundingClientRect();
-      if (box.width < 50 || box.height < 50) return null;
-      if (start.x < box.left || start.x > box.right || start.y < box.top || start.y > box.bottom) return null;
-      var fraction = (start.y - box.top) / box.height;
-      if (fraction < 0.08 || fraction > 0.82) return null;
+      var picture = video.getBoundingClientRect();
+      if (picture.width < 50 || picture.height < 50) return null;
+      var screenBox = fullscreenBox();
+      var onPicture = contains(picture, start.x, start.y);
+      if (!onPicture && !(screenBox && contains(screenBox, start.x, start.y))) return null;
+      if (onPicture) {
+        var fraction = (start.y - picture.top) / picture.height;
+        if (fraction < 0.08 || fraction > 0.82) return null;
+      }
       var element = start.target;
       if (element && element.closest) {
         if (element.closest(STRICT)) return null;
         var small = element.closest(SMALL);
-        if (small && areaOf(small.getBoundingClientRect()) < areaOf(box) * 0.35) return null;
+        var reference = onPicture ? picture : screenBox;
+        if (small && areaOf(small.getBoundingClientRect()) < areaOf(reference) * 0.35) return null;
       }
       return video;
     }
